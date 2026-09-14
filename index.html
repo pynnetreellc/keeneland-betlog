@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fall Stars Bet Log</title>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#10503C">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Bet Log">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+
+<style>
+/* The palette is JT's own, from the component: Keeneland green silks, program
+   paper, tote-board amber. Deliberately single-theme — a paper race program
+   doesn't have a dark mode — so every surface and every color is painted
+   explicitly and the page holds on either host ground. */
+:root {
+  --paper: #E5E4DC;
+  --ink: #14231C;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  margin: 0;
+  font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Phone-first: a single column, centred and capped once there's room for it. */
+#root {
+  max-width: 560px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--paper);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Launched from the home screen the page runs full-bleed under the status bar,
+   so the green header pays for that strip itself — white clock on dark green
+   reads; white clock on cream would not. Zero in a normal browser tab. */
+#app-header { padding-top: calc(16px + env(safe-area-inset-top)); }
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, textarea {
+  font-family: inherit;
+  color: inherit;
+  min-width: 0;
+  /* iOS zooms the whole page when you focus a field under 16px. At the track,
+     with one hand on a program, that's the difference between usable and not. */
+  font-size: 16px !important;
+}
+
+textarea { resize: vertical; }
+
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid #10503C;
+  outline-offset: 2px;
+}
+
+/* Figures line up in columns throughout — stacks, payouts, win rates. */
+[style*="monospace"] { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Layout utilities — only the classes this app actually uses. */
+.block{display:block}.flex{display:flex}.flex-1{flex:1 1 0%}.flex-wrap{flex-wrap:wrap}
+.min-w-0{min-width:0}.shrink-0{flex-shrink:0}
+.items-center{align-items:center}.items-start{align-items:flex-start}
+.items-end{align-items:flex-end}.items-baseline{align-items:baseline}
+.justify-between{justify-content:space-between}
+.gap-1{gap:4px}.gap-2{gap:8px}.gap-4{gap:16px}
+.w-full{width:100%}.w-8{width:32px}.w-9{width:36px}.w-16{width:64px}.h-9{height:36px}
+.text-xs{font-size:12px}.text-sm{font-size:14px}.text-base{font-size:16px}.text-lg{font-size:18px}.text-xl{font-size:20px}
+.text-center{text-align:center}.text-right{text-align:right}
+.leading-tight{line-height:1.25}.leading-relaxed{line-height:1.65}
+.tracking-wide{letter-spacing:.04em}.italic{font-style:italic}.opacity-70{opacity:.7}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rounded{border-radius:6px}
+.p-3{padding:12px}.p-4{padding:16px}.p-6{padding:24px}
+.px-2{padding-left:8px;padding-right:8px}.px-3{padding-left:12px;padding-right:12px}.px-4{padding-left:16px;padding-right:16px}
+.py-1{padding-top:4px;padding-bottom:4px}.py-2{padding-top:8px;padding-bottom:8px}.py-3{padding-top:12px;padding-bottom:12px}.py-4{padding-top:16px;padding-bottom:16px}.py-6{padding-top:24px;padding-bottom:24px}.py-8{padding-top:32px;padding-bottom:32px}
+.pt-3{padding-top:12px}.pt-4{padding-top:16px}
+.pb-1{padding-bottom:4px}.pb-2{padding-bottom:8px}.pb-3{padding-bottom:12px}
+.pr-2{padding-right:8px}
+.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}
+.mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}.mb-5{margin-bottom:20px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="./react.production.min.js"></script>
+<script src="./react-dom.production.min.js"></script>
+<script src="./app.js"></script>
+<script>
+// The service worker is what makes this installable as a real app rather than a
+// browser shortcut, and what lets the log open in a grandstand with no bars.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {
+      // No service worker means no offline and no install prompt, but the page
+      // itself still works. Nothing to tell the user about.
+    });
+  });
+}
+</script>
+</body>
+</html>
