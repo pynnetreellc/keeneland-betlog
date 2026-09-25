@@ -1,7 +1,7 @@
 // Bump VERSION whenever you want to guarantee a clean cache sweep.
 // You don't have to for normal edits — index.html and app.js are fetched
 // network-first, so a deploy lands on the next open.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = 'keeneland-betlog-' + VERSION;
 const SHELL = ['./', './index.html', './app.js', './manifest.webmanifest',
                './react.production.min.js', './react-dom.production.min.js',

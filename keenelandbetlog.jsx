@@ -272,6 +272,9 @@ function KeenelandBetLog() {
   const seed = store.read();
   const [saveError, setSaveError] = useState(null);
   const [bets, setBets] = useState(seed && seed.bets ? seed.bets : []);
+  const [horses, setHorses] = useState(
+    seed && seed.horses ? seed.horses : { starred: {}, mine: [] }
+  );
   const [stacks, setStacks] = useState(
     seed && seed.stacks ? seed.stacks : { handicap: 60, fun: 40 }
   );
@@ -294,8 +297,9 @@ function KeenelandBetLog() {
   const [draft, setDraft] = useState(blank);
 
 
-  const persist = (nextBets, nextStacks) => {
-    const ok = store.save({ bets: nextBets, stacks: nextStacks || stacks });
+  // One blob for everything, so Copy log carries the horses too.
+  const persist = (patch) => {
+    const ok = store.save({ bets, stacks, horses, ...patch });
     setSaveError(
       ok ? null : "Couldn't save. Write it on your program — this entry may not stick."
     );
@@ -313,7 +317,7 @@ function KeenelandBetLog() {
     };
     const next = [...bets, bet];
     setBets(next);
-    persist(next);
+    persist({ bets: next });
     setDraft({ ...blank, race: Math.min(11, bet.race + 1), stack: draft.stack });
     setAdding(false);
   };
@@ -323,7 +327,7 @@ function KeenelandBetLog() {
       b.id === id ? { ...b, returned: Number(amount) || 0 } : b
     );
     setBets(next);
-    persist(next);
+    persist({ bets: next });
     setSettling(null);
     setPayout("");
   };
@@ -331,7 +335,30 @@ function KeenelandBetLog() {
   const remove = (id) => {
     const next = bets.filter((b) => b.id !== id);
     setBets(next);
-    persist(next);
+    persist({ bets: next });
+  };
+
+  const toggleStar = (id) => {
+    const starred = { ...horses.starred };
+    if (starred[id]) delete starred[id];
+    else starred[id] = true;
+    const next = { ...horses, starred };
+    setHorses(next);
+    persist({ horses: next });
+  };
+
+  const addHorse = (h) => {
+    const next = { ...horses, mine: [...horses.mine, h] };
+    setHorses(next);
+    persist({ horses: next });
+  };
+
+  const dropHorse = (id) => {
+    const starred = { ...horses.starred };
+    delete starred[id];
+    const next = { starred, mine: horses.mine.filter((m) => m.id !== id) };
+    setHorses(next);
+    persist({ horses: next });
   };
 
   const dayBets = bets.filter((b) => b.day === day);
@@ -345,7 +372,7 @@ function KeenelandBetLog() {
   const updateStack = (which, val) => {
     const next = { ...stacks, [which]: Number(val) || 0 };
     setStacks(next);
-    persist(bets, next);
+    persist({ stacks: next });
   };
 
   return (
@@ -436,6 +463,7 @@ function KeenelandBetLog() {
       >
         {[
           ["log", "Today's bets"],
+          ["horses", "Horses"],
           ["totals", "Totals"],
           ["trainers", "Trainers"],
         ].map(([v, label]) => (
@@ -699,6 +727,13 @@ function KeenelandBetLog() {
               })}
           </div>
         </div>
+      ) : view === "horses" ? (
+        <Horses
+          horses={horses}
+          onStar={toggleStar}
+          onAdd={addHorse}
+          onDrop={dropHorse}
+        />
       ) : view === "totals" ? (
         <Totals bets={bets} stacks={stacks} />
       ) : (
@@ -910,12 +945,21 @@ function Trainers() {
   const needle = q.trim().toLowerCase();
   let rows = TRAINERS.filter((t) => !needle || t[0].toLowerCase().includes(needle));
 
+  // Total ITM is weighted across both surfaces — every start counts once —
+  // rather than averaging the two percentages, which would give a five-start
+  // surface the same say as a sixty-start one.
+  const totStarts = (t) => t[1] + t[4];
+  const totItm = (t) => t[3] + t[6];
+
   if (sort === "turf") {
     rows = rows.filter((t) => t[1] >= THIN);
     rows.sort((a, b) => b[2] / b[1] - a[2] / a[1]);
   } else if (sort === "dirt") {
     rows = rows.filter((t) => t[4] >= THIN);
     rows.sort((a, b) => b[5] / b[4] - a[5] / a[4]);
+  } else if (sort === "itm") {
+    rows = rows.filter((t) => totStarts(t) >= THIN * 2);
+    rows.sort((a, b) => totItm(b) / totStarts(b) - totItm(a) / totStarts(a));
   } else {
     rows = rows.slice().sort((a, b) => b[1] + b[4] - (a[1] + a[4]));
   }
@@ -940,12 +984,16 @@ function Trainers() {
         <Pill on={sort === "dirt"} onClick={() => setSort("dirt")}>
           Dirt win%
         </Pill>
+        <Pill on={sort === "itm"} onClick={() => setSort("itm")}>
+          Total ITM
+        </Pill>
       </Row>
 
       {sort !== "starts" && (
         <p style={{ color: "#7C7B70" }} className="text-xs mb-2">
-          Showing only trainers with {THIN}+ starts on that surface — a 100% win
-          rate off two starts isn't a fact.
+          {sort === "itm"
+            ? `In the money over both surfaces combined, ${THIN * 2}+ starts. Weighted by starts, not an average of the two percentages.`
+            : `Showing only trainers with ${THIN}+ starts on that surface — a 100% win rate off two starts isn't a fact.`}
         </p>
       )}
 
@@ -976,7 +1024,18 @@ function Trainers() {
           style={{ borderBottom: `1px solid ${RULE}` }}
           className="flex items-center py-2"
         >
-          <div className="flex-1 min-w-0 text-sm truncate pr-2">{t[0]}</div>
+          <div className="flex-1 min-w-0 pr-2">
+            <div className="text-sm truncate">{t[0]}</div>
+            {sort === "itm" && (
+              <div
+                style={{ color: "#7C7B70", fontFamily: "ui-monospace, monospace" }}
+                className="text-xs leading-tight"
+              >
+                {rate(t[3] + t[6], t[1] + t[4]).toFixed(0)}% itm ·{" "}
+                {t[1] + t[4]} st
+              </div>
+            )}
+          </div>
           <Surface st={t[1]} w={t[2]} itm={t[3]} />
           <Surface st={t[4]} w={t[5]} itm={t[6]} />
         </div>
@@ -1041,6 +1100,288 @@ function Mark() {
       className="shrink-0"
       style={{ objectFit: "contain" }}
     />
+  );
+}
+
+// Horses I've flagged from the charts. `day`/`race` stay null until Keeneland
+// entries are drawn, at which point these get a race and a call; anything still
+// unassigned shows under the watch list. Seeded with the Kentucky Downs
+// trouble-line shortlist — real horses, real footnotes, nothing invented.
+const HORSES = [
+  { id: "gran-oriente", name: "Gran Oriente (CHI)", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 1,
+    last: "Sep 7 Kentucky Downs R10 · G3 Mint Millions, 1m turf · 5th of 10, btn 2, 6.79-1",
+    note: "Vied for the lead between rivals to upper stretch, was crowded and in tight along the rail to the final sixteenth, then flattened out. In the fight and stopped — best line of the meet.",
+    day: null, race: null, call: "" },
+  { id: "movin-on-up", name: "Movin' On Up", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 1,
+    last: "Aug 29 Kentucky Downs R7 · G1 Ladies Turf Sprint, 6½f · 7th of 10, btn 6¾, 13.69-1",
+    note: "Bumped at the start, then steadied coming up the hill, then bumped again in the stretch. Three incidents in a Grade 1.",
+    day: null, race: null, call: "" },
+  { id: "glassing", name: "Glassing", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 1,
+    last: "Sep 6 Kentucky Downs R12 · 2yo f MSW, 6½f · 5th of 11, btn 5¼, 19.54-1",
+    note: "Off slow, raced in tight at the quarter marker, weaved through rivals, then crowded late. Three excuses in a juvenile maiden.",
+    day: null, race: null, call: "" },
+  { id: "phantom-fire", name: "Phantom Fire", trainer: "Ed Moger Jr.", tag: "trouble", tier: 1,
+    last: "Aug 29 Kentucky Downs R5 · 2yo f allowance, 6½f · 8th of 10, btn 6½, 15.38-1",
+    note: "Stalked the pace boxed on the rail, went antsy on the turn, forcibly tipped out in the upper. Never got a clean run.",
+    day: null, race: null, call: "" },
+  { id: "out-on-bail", name: "Out On Bail", trainer: "Michael Maker", tag: "trouble", tier: 2,
+    last: "Aug 30 Kentucky Downs R7 · 6½f turf · 6th of 11, btn 6½, 8.38-1",
+    note: "A bit in tight between the rail and a rival.", day: null, race: null, call: "" },
+  { id: "athaliah", name: "Athaliah", trainer: "Riley Mott", tag: "trouble", tier: 2,
+    last: "Sep 5 Kentucky Downs R11 · alw opt clm, 7f turf · 5th of 10, btn 7¼, 8.28-1",
+    note: "Bumped and brushed at the break, then five to six wide off the bend. Mild improvement, needed more.",
+    day: null, race: null, call: "" },
+  { id: "vissino", name: "Vissino", trainer: "Mark Casse", tag: "trouble", tier: 2,
+    last: "Aug 29 Kentucky Downs R6 · Listed juvenile sprint, 6½f · 9th of 11, btn 7¾, 8.59-1",
+    note: "Broke out, shuffled back, off slowly, steered widest. Improved into the lane but couldn't sustain it.",
+    day: null, race: null, call: "" },
+  { id: "bless-her", name: "Bless Her", trainer: "H. Graham Motion", tag: "trouble", tier: 2,
+    last: "Sep 9 Kentucky Downs R12 · 1 5/16m turf · 2nd of 9, btn 6¾, 10.42-1",
+    note: "Bumped with an outer rival and bobbled in tight early while prompting between horses, recovered to claim the place.",
+    day: null, race: null, call: "" },
+  { id: "madison-moon", name: "Madison Moon", trainer: "Joe Sharp", tag: "trouble", tier: 2,
+    last: "Sep 7 Kentucky Downs R2 · 2yo f MSW, 6½f · 10th of 12, btn 8, 15.22-1",
+    note: "Shut off soon after the start. Hard trouble, but she never got going afterwards.",
+    day: null, race: null, call: "" },
+  { id: "lucky-to-dance", name: "Lucky to Dance", trainer: "Darrin Miller", tag: "trouble", tier: 2,
+    last: "Sep 6 Kentucky Downs R7 · 6½f turf · 7th of 12, btn 4¼, 18.38-1",
+    note: "Reluctant loading, a step slow at the break, then boxed in passing the quarter pole.",
+    day: null, race: null, call: "" },
+  { id: "bandolim", name: "Bandolim", trainer: "Paulo Lobo", tag: "trouble", tier: 2,
+    last: "Sep 3 Kentucky Downs R2 · 1m turf · 4th of 10, btn 4, 6.29-1",
+    note: "Caught in tight nearing the top of the stretch.", day: null, race: null, call: "" },
+  { id: "walley-world", name: "Walley World", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 2,
+    last: "Sep 7 Kentucky Downs R13 · 1m turf · 6th of 10, btn 8½, 6.88-1",
+    note: "Steadied after coming up on the heels of a weakening opponent past the quarter pole.",
+    day: null, race: null, call: "" },
+  { id: "silver-jewel", name: "Silver Jewel", trainer: "Pavel Matejka", tag: "trouble", tier: 2,
+    last: "Aug 29 Kentucky Downs R8 · 2yo MSW, 1m turf · 7th of 12, btn 9¼, 11.28-1",
+    note: "Bumped at the start and off a bit slowly, then caught three to four wide throughout. Beaten far enough that the trip doesn't cover it.",
+    day: null, race: null, call: "" },
+  { id: "light-won-up", name: "Light Won Up", trainer: "Doug O'Neill", tag: "avoid", tier: 3,
+    last: "Sep 5 Kentucky Downs R10 · 6½f turf · 5th of 12, btn 1¼, 26.2-1",
+    note: "Reads like a gift — beaten a length and a quarter at 26-1, caught in tight between runners into deep stretch. But the chart also says BLED. That is medical, not a trip. Do not back him on the excuse.",
+    day: null, race: null, call: "" },
+];
+
+const DAY_LABEL = { fri: "Friday · Oct 2", sat: "Saturday · Oct 3", sun: "Sunday · Oct 4" };
+const TAG_COLOR = { trouble: GREEN, avoid: LOSS, mine: "#8A6D1F" };
+const TAG_LABEL = { trouble: "Trip trouble", avoid: "Do not back", mine: "Yours" };
+
+function Horses({ horses, onStar, onAdd, onDrop }) {
+  const [q, setQ] = useState("");
+  const [only, setOnly] = useState("all");
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ name: "", day: "", race: "", note: "" });
+
+  const mine = (horses.mine || []).map((m) => ({ ...m, tag: "mine", tier: 2 }));
+  const all = [...HORSES, ...mine];
+
+  const needle = q.trim().toLowerCase();
+  let list = all.filter(
+    (h) =>
+      (!needle ||
+        h.name.toLowerCase().includes(needle) ||
+        (h.trainer || "").toLowerCase().includes(needle)) &&
+      (only === "all" || horses.starred[h.id])
+  );
+
+  // Grouped by race day, because that's how the card gets worked. Anything
+  // without a race yet falls into the watch list at the bottom.
+  const order = ["fri", "sat", "sun", ""];
+  const groups = order
+    .map((d) => ({
+      key: d,
+      label: d ? DAY_LABEL[d] : "Watch list — no race yet",
+      rows: list
+        .filter((h) => (h.day || "") === d)
+        .sort((a, b) => (Number(a.race) || 99) - (Number(b.race) || 99) || (a.tier || 9) - (b.tier || 9)),
+    }))
+    .filter((g) => g.rows.length);
+
+  const save = () => {
+    if (!draft.name.trim()) return;
+    onAdd({
+      id: "mine-" + Date.now(),
+      name: draft.name.trim(),
+      trainer: "",
+      last: "",
+      note: draft.note.trim(),
+      day: draft.day || null,
+      race: draft.race || null,
+      call: "",
+    });
+    setDraft({ name: "", day: "", race: "", note: "" });
+    setAdding(false);
+  };
+
+  return (
+    <div className="px-4 py-3">
+      <input
+        id="horse-search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search horse or trainer"
+        style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+        className="w-full px-3 py-2 rounded mb-3 text-base"
+      />
+
+      <div className="flex gap-2 items-center mb-3">
+        <Pill on={only === "all"} onClick={() => setOnly("all")}>
+          All
+        </Pill>
+        <Pill on={only === "star"} onClick={() => setOnly("star")}>
+          ★ Starred
+        </Pill>
+        <div className="flex-1" />
+        <button
+          onClick={() => setAdding(!adding)}
+          style={{ border: `1px solid ${GREEN}`, color: GREEN }}
+          className="px-3 py-2 rounded text-sm"
+        >
+          {adding ? "Cancel" : "+ Add"}
+        </button>
+      </div>
+
+      {adding && (
+        <div
+          style={{ background: PAPER_HI, border: `1px solid ${RULE}` }}
+          className="rounded p-3 mb-3"
+        >
+          <input
+            id="horse-name"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            placeholder="Horse"
+            style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+            className="w-full px-3 py-2 rounded mb-2 text-base"
+          />
+          <Row label="Day">
+            {DAYS.map((d) => (
+              <Pill
+                key={d.id}
+                on={draft.day === d.id}
+                onClick={() => setDraft({ ...draft, day: draft.day === d.id ? "" : d.id })}
+              >
+                {d.label}
+              </Pill>
+            ))}
+            <input
+              id="horse-race"
+              value={draft.race}
+              onChange={(e) => setDraft({ ...draft, race: e.target.value })}
+              placeholder="Race"
+              style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+              className="w-16 px-2 py-1 rounded text-sm"
+            />
+          </Row>
+          <input
+            id="horse-note"
+            value={draft.note}
+            onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+            placeholder="What you saw"
+            style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+            className="w-full px-3 py-2 rounded mb-3 text-sm"
+          />
+          <button
+            onClick={save}
+            style={{ background: GREEN, color: PAPER_HI }}
+            className="w-full py-3 rounded"
+          >
+            Add horse
+          </button>
+        </div>
+      )}
+
+      {groups.length === 0 && (
+        <p style={{ color: "#7C7B70" }} className="text-sm py-6">
+          {only === "star"
+            ? "Nothing starred yet. Tap the star on a horse to shortlist it."
+            : "No horse by that name on the list."}
+        </p>
+      )}
+
+      {groups.map((g) => (
+        <div key={g.key} className="mb-4">
+          <div
+            style={{
+              fontFamily: "Georgia, serif",
+              borderBottom: `1px solid ${RULE}`,
+              color: g.key ? INK : "#7C7B70",
+            }}
+            className="text-base pb-1 mb-1"
+          >
+            {g.label}
+          </div>
+          {g.rows.map((h) => (
+            <div
+              key={h.id}
+              style={{ borderBottom: `1px solid ${RULE}` }}
+              className="py-3 flex gap-2 items-start"
+            >
+              <button
+                onClick={() => onStar(h.id)}
+                aria-label={horses.starred[h.id] ? "Unstar" : "Star"}
+                style={{ color: horses.starred[h.id] ? AMBER : "#C3C2B6" }}
+                className="text-lg leading-tight shrink-0"
+              >
+                ★
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="text-base">
+                  {h.race ? (
+                    <span style={{ fontFamily: "ui-monospace, monospace", color: GREEN }}>
+                      R{h.race}{" "}
+                    </span>
+                  ) : null}
+                  {h.name}
+                </div>
+                <div className="flex gap-2 items-center mt-1">
+                  <span
+                    style={{ color: TAG_COLOR[h.tag] || INK }}
+                    className="text-xs"
+                  >
+                    {TAG_LABEL[h.tag] || h.tag}
+                  </span>
+                  {h.trainer && (
+                    <span style={{ color: "#7C7B70" }} className="text-xs truncate">
+                      {h.trainer}
+                    </span>
+                  )}
+                </div>
+                {h.last && (
+                  <div style={{ color: "#7C7B70" }} className="text-xs mt-1">
+                    {h.last}
+                  </div>
+                )}
+                {h.note && <div className="text-xs mt-1 italic">{h.note}</div>}
+                {h.call && (
+                  <div style={{ color: GREEN }} className="text-xs mt-1">
+                    {h.call}
+                  </div>
+                )}
+                {h.tag === "mine" && (
+                  <button
+                    onClick={() => onDrop(h.id)}
+                    style={{ color: LOSS }}
+                    className="text-xs mt-1"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      <p style={{ color: "#7C7B70" }} className="text-xs mt-2 leading-relaxed">
+        {HORSES.length} horses off the Kentucky Downs charts. They get a race
+        number and a call once Keeneland entries are drawn; until then they sit
+        in the watch list. Anything you add is saved on this phone and rides
+        along in Copy log.
+      </p>
+    </div>
   );
 }
 

@@ -20,15 +20,17 @@ and clearing site data wipes it. Use *Copy log* before that happens.
 
 ## Deploying
 
-Same shape as panda-planner: GitHub Pages, `master`, served from the repo root.
+GitHub Pages, served from the repo root. Note this repo is on `main` (GitHub
+Desktop's default) while panda-planner is on `master` — set Pages to whichever
+branch the repo is actually on.
 
-    git init -b master
+    git init -b main
     git add .
     git commit -m "Keeneland Fall Stars bet log"
     git remote add origin https://github.com/pynnetreellc/keeneland-betlog.git
-    git push -u origin master
+    git push -u origin main
 
-Then Settings → Pages → *Deploy from a branch*, `master`, `/ (root)`. The repo
+Then Settings → Pages → *Deploy from a branch*, `main`, `/ (root)`. The repo
 has to be public for Pages on a free plan.
 
 On the phone: open the Pages URL in Chrome, ⋮ → *Install*. Real app icon, no
