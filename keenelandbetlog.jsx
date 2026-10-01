@@ -1108,65 +1108,207 @@ function Mark() {
 // unassigned shows under the watch list. Seeded with the Kentucky Downs
 // trouble-line shortlist — real horses, real footnotes, nothing invented.
 const HORSES = [
-  { id: "gran-oriente", name: "Gran Oriente (CHI)", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 1,
+  // ---- Entered Oct 2-4. Race, post and morning line verified against the
+  // published entries on Oct 1. Field sizes can still move with scratches and
+  // also-eligibles, and any turf race can come off the grass. ----
+
+  { id: "light-won-up", name: "Light Won Up", trainer: "Doug O'Neill", tag: "avoid", surf: "turf", tier: 1,
+    last: "Sep 5 Kentucky Downs R10 · 6½f turf · 5th of 12, btn 1¼, 26.2-1",
+    note: "Reads like a gift — beaten a length and a quarter at 26-1, caught in tight between runners into deep stretch. But the chart also says BLED. That is medical, not a trip.",
+    day: "fri", race: "5", post: 10, ml: "9/2",
+    call: "He is in YOUR race and he is the 9/2 second choice. The market has moved to him on the trip line and ignored the bleed. Do not back him. If he wins, he wins without you." },
+
+  { id: "mad-house", name: "Mad House", trainer: "David VanWinkle", tag: "stakes", surf: "dirt", tier: 1,
+    last: "No start in my chart window — no footnote evidence either way.",
+    note: "",
+    day: "fri", race: "7", post: 1, ml: "10/1",
+    call: "Phoenix (G2), 6f dirt, 11 runners. Speed from the one hole on a main track the rain is likely to seal. Structural play of the weekend: right post, right surface trend, 10/1." },
+
+  { id: "nakatomi", name: "Nakatomi", trainer: "Wesley Ward", tag: "stakes", surf: "dirt", tier: 1,
+    last: "No start in my chart window.",
+    note: "",
+    day: "fri", race: "7", post: 10, ml: "7/2",
+    call: "Phoenix (G2), 6f dirt. Ward is 15-for-33 (45.5%) on the Keeneland main track. This is the Ward horse to take this weekend — not the Woodford one. Post 10 of 11 is the cost." },
+
+  { id: "no-nay-hudson", name: "No Nay Hudson (IRE)", trainer: "Wesley Ward", tag: "avoid", surf: "turf", tier: 1,
+    last: "No start in my chart window.",
+    note: "",
+    day: "sat", race: "6", post: 3, ml: "8/1",
+    call: "Woodford (G2), 5½f turf. Same trainer as Nakatomi, opposite side of the split: Ward is 2-for-32 on the Keeneland turf course. 8/1 is not enough to buy that." },
+
+  { id: "brilliant-berti", name: "Brilliant Berti", trainer: "Cherie DeVaux", tag: "watch", surf: "turf", tier: 2,
+    last: "Won at Kentucky Downs in my chart window — clean trip, no excuse needed.",
+    note: "",
+    day: "sat", race: "10", post: 2, ml: "6/1",
+    call: "Coolmore Turf Mile (G1), 1m turf, 9 runners. A G1 that will stay on the grass whatever the weather. 6/1 in a short field — fair, not generous." },
+
+  { id: "immersive", name: "Immersive", trainer: "Brad Cox", tag: "avoid", surf: "dirt", tier: 2,
+    last: "3rd of 4 in my chart window, beaten 8½.",
+    note: "Four-horse field, no trouble in the footnote, well beaten. That is a negative line, not a trip excuse.",
+    day: "sun", race: "9", post: 3, ml: "",
+    call: "Juddmonte Spinster (G1), 1 1/8m dirt — field of 5. No price, no pace scenario, and her last line is bad. Watch it, don't bet it." },
+
+  { id: "guy-smiley", name: "Guy Smiley", trainer: "Wesley Ward", tag: "watch", surf: "turf", tier: 2,
+    last: "Won at Kentucky Downs in my chart window.",
+    note: "",
+    day: "sun", race: "5", post: 11, ml: "",
+    call: "5½f turf allowance, 12 runners. He won for Ward at KD, but this is the Keeneland turf course where Ward is 2-for-32. Those two facts fight. Let the price decide — and only if the race stays on grass." },
+
+  { id: "fanshell-beach", name: "Fanshell Beach", trainer: "Wesley Ward", tag: "avoid", surf: "turf", tier: 3,
+    last: "No start in my chart window.",
+    note: "",
+    day: "sun", race: "8", post: 2, ml: "",
+    call: "Indian Summer (G3), 5½f turf, 9 runners. One of two Ward runners in here, on the surface where he is 2-for-32." },
+
+  { id: "ruiva", name: "Ruiva", trainer: "Wesley Ward", tag: "avoid", surf: "turf", tier: 3,
+    last: "No start in my chart window.",
+    note: "",
+    day: "sun", race: "8", post: 8, ml: "",
+    call: "Indian Summer (G3), 5½f turf. The second Ward runner. Two from one barn in a nine-horse turf sprint is a pace note, not a reason to back either of them." },
+
+  { id: "mid-american", name: "Mid American", trainer: "James DiVito", tag: "stakes", surf: "turf", tier: 1,
+    last: "Aug 29 Kentucky Downs R6 · 6½f turf · WON by 1¼, 5.35-1",
+    note: "Rated nicely off of the early pace then was well placed while saving ground to the turn, took command into the final furlong. A genuine stalker who saved ground — the style wants a route.",
+    day: "sun", race: "10", post: 11, ml: "",
+    call: "Castle & Key Bourbon (G2), 1 1/16m turf, 11 runners. The style is real; post 11 of 11 stretching out on a tight course is the problem. Needs to be past 8-1 to be worth the trouble." },
+
+  { id: "agate", name: "Agate", trainer: "Kelsey Danner", tag: "stakes", surf: "turf", tier: 1,
+    last: "Sep 9 Kentucky Downs R11 · 1m turf · 3rd of 12, btn 6¼, 5.58-1",
+    note: "Settled along the inside in the third flight at the back of the field and took a bad step nearing the five furlongs marker while being bumped. Bet, had an excuse, still ran third.",
+    day: "sun", race: "10", post: 2, ml: "",
+    call: "Bourbon (G2). Best of the three on merit: real trouble line at a real price, and post 2 is the opposite of Mid American's problem." },
+
+  { id: "trim-castle", name: "Trim Castle", trainer: "John Ennis", tag: "avoid", surf: "turf", tier: 2,
+    last: "Sep 9 Kentucky Downs R11 · 1m turf · 5th of 12, btn 11½, 40.19-1",
+    note: "Also 3rd of 9 at Kentucky Downs Aug 29 at 4.42-1. The route attempt was the 40-1 one and it was poor — the market knew going in.",
+    day: "sun", race: "10", post: 1, ml: "",
+    call: "Bourbon (G2), post 1. Two chart lines and the longer one is the bad one. No case here." },
+
+  { id: "real-goodbar", name: "Real Goodbar", trainer: "Kenneth McPeek", tag: "trouble", surf: "dirt", tier: 1,
+    last: "Sep 12 Churchill R10 · 1m dirt · 4th of 7, btn 4½, 6.69-1",
+    note: "Stalked three wide, bid between horses turning for home, vied while being floated to the five path entering the lane, yielded when in tight in upper stretch then got outkicked for show.",
+    day: "sun", race: "10", post: 5, ml: "",
+    call: "Bourbon (G2) — but his only line in my data is on DIRT, and he was bet to 6.69-1 with a trouble note. He is the one Bourbon runner with proven main-track form. If this race comes off the turf, he is the play, and the board will be slow to notice." },
+
+  // ---- Not entered Oct 2-4. Kentucky Downs trip-trouble shortlist, kept for
+  // the rest of the meet. These sit in the bottom group until one turns up
+  // in an entry list. ----
+  { id: "gran-oriente", name: "Gran Oriente (CHI)", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 1,
     last: "Sep 7 Kentucky Downs R10 · G3 Mint Millions, 1m turf · 5th of 10, btn 2, 6.79-1",
     note: "Vied for the lead between rivals to upper stretch, was crowded and in tight along the rail to the final sixteenth, then flattened out. In the fight and stopped — best line of the meet.",
-    day: null, race: null, call: "" },
-  { id: "movin-on-up", name: "Movin' On Up", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 1,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "movin-on-up", name: "Movin' On Up", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 1,
     last: "Aug 29 Kentucky Downs R7 · G1 Ladies Turf Sprint, 6½f · 7th of 10, btn 6¾, 13.69-1",
     note: "Bumped at the start, then steadied coming up the hill, then bumped again in the stretch. Three incidents in a Grade 1.",
-    day: null, race: null, call: "" },
-  { id: "glassing", name: "Glassing", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 1,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "glassing", name: "Glassing", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 1,
     last: "Sep 6 Kentucky Downs R12 · 2yo f MSW, 6½f · 5th of 11, btn 5¼, 19.54-1",
     note: "Off slow, raced in tight at the quarter marker, weaved through rivals, then crowded late. Three excuses in a juvenile maiden.",
-    day: null, race: null, call: "" },
-  { id: "phantom-fire", name: "Phantom Fire", trainer: "Ed Moger Jr.", tag: "trouble", tier: 1,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "phantom-fire", name: "Phantom Fire", trainer: "Ed Moger Jr.", tag: "trouble", surf: "turf", tier: 1,
     last: "Aug 29 Kentucky Downs R5 · 2yo f allowance, 6½f · 8th of 10, btn 6½, 15.38-1",
     note: "Stalked the pace boxed on the rail, went antsy on the turn, forcibly tipped out in the upper. Never got a clean run.",
-    day: null, race: null, call: "" },
-  { id: "out-on-bail", name: "Out On Bail", trainer: "Michael Maker", tag: "trouble", tier: 2,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "out-on-bail", name: "Out On Bail", trainer: "Michael Maker", tag: "trouble", surf: "turf", tier: 2,
     last: "Aug 30 Kentucky Downs R7 · 6½f turf · 6th of 11, btn 6½, 8.38-1",
-    note: "A bit in tight between the rail and a rival.", day: null, race: null, call: "" },
-  { id: "athaliah", name: "Athaliah", trainer: "Riley Mott", tag: "trouble", tier: 2,
+    note: "A bit in tight between the rail and a rival.", day: null, race: null, post: null, ml: "", call: "" },
+  { id: "athaliah", name: "Athaliah", trainer: "Riley Mott", tag: "trouble", surf: "turf", tier: 2,
     last: "Sep 5 Kentucky Downs R11 · alw opt clm, 7f turf · 5th of 10, btn 7¼, 8.28-1",
     note: "Bumped and brushed at the break, then five to six wide off the bend. Mild improvement, needed more.",
-    day: null, race: null, call: "" },
-  { id: "vissino", name: "Vissino", trainer: "Mark Casse", tag: "trouble", tier: 2,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "vissino", name: "Vissino", trainer: "Mark Casse", tag: "trouble", surf: "turf", tier: 2,
     last: "Aug 29 Kentucky Downs R6 · Listed juvenile sprint, 6½f · 9th of 11, btn 7¾, 8.59-1",
     note: "Broke out, shuffled back, off slowly, steered widest. Improved into the lane but couldn't sustain it.",
-    day: null, race: null, call: "" },
-  { id: "bless-her", name: "Bless Her", trainer: "H. Graham Motion", tag: "trouble", tier: 2,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "bless-her", name: "Bless Her", trainer: "H. Graham Motion", tag: "trouble", surf: "turf", tier: 2,
     last: "Sep 9 Kentucky Downs R12 · 1 5/16m turf · 2nd of 9, btn 6¾, 10.42-1",
     note: "Bumped with an outer rival and bobbled in tight early while prompting between horses, recovered to claim the place.",
-    day: null, race: null, call: "" },
-  { id: "madison-moon", name: "Madison Moon", trainer: "Joe Sharp", tag: "trouble", tier: 2,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "madison-moon", name: "Madison Moon", trainer: "Joe Sharp", tag: "trouble", surf: "turf", tier: 2,
     last: "Sep 7 Kentucky Downs R2 · 2yo f MSW, 6½f · 10th of 12, btn 8, 15.22-1",
     note: "Shut off soon after the start. Hard trouble, but she never got going afterwards.",
-    day: null, race: null, call: "" },
-  { id: "lucky-to-dance", name: "Lucky to Dance", trainer: "Darrin Miller", tag: "trouble", tier: 2,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "lucky-to-dance", name: "Lucky to Dance", trainer: "Darrin Miller", tag: "trouble", surf: "turf", tier: 2,
     last: "Sep 6 Kentucky Downs R7 · 6½f turf · 7th of 12, btn 4¼, 18.38-1",
     note: "Reluctant loading, a step slow at the break, then boxed in passing the quarter pole.",
-    day: null, race: null, call: "" },
-  { id: "bandolim", name: "Bandolim", trainer: "Paulo Lobo", tag: "trouble", tier: 2,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "bandolim", name: "Bandolim", trainer: "Paulo Lobo", tag: "trouble", surf: "turf", tier: 2,
     last: "Sep 3 Kentucky Downs R2 · 1m turf · 4th of 10, btn 4, 6.29-1",
-    note: "Caught in tight nearing the top of the stretch.", day: null, race: null, call: "" },
-  { id: "walley-world", name: "Walley World", trainer: "Saffie Joseph Jr.", tag: "trouble", tier: 2,
+    note: "Caught in tight nearing the top of the stretch.", day: null, race: null, post: null, ml: "", call: "" },
+  { id: "walley-world", name: "Walley World", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 2,
     last: "Sep 7 Kentucky Downs R13 · 1m turf · 6th of 10, btn 8½, 6.88-1",
     note: "Steadied after coming up on the heels of a weakening opponent past the quarter pole.",
-    day: null, race: null, call: "" },
-  { id: "silver-jewel", name: "Silver Jewel", trainer: "Pavel Matejka", tag: "trouble", tier: 2,
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "silver-jewel", name: "Silver Jewel", trainer: "Pavel Matejka", tag: "trouble", surf: "turf", tier: 2,
     last: "Aug 29 Kentucky Downs R8 · 2yo MSW, 1m turf · 7th of 12, btn 9¼, 11.28-1",
     note: "Bumped at the start and off a bit slowly, then caught three to four wide throughout. Beaten far enough that the trip doesn't cover it.",
-    day: null, race: null, call: "" },
-  { id: "light-won-up", name: "Light Won Up", trainer: "Doug O'Neill", tag: "avoid", tier: 3,
-    last: "Sep 5 Kentucky Downs R10 · 6½f turf · 5th of 12, btn 1¼, 26.2-1",
-    note: "Reads like a gift — beaten a length and a quarter at 26-1, caught in tight between runners into deep stretch. But the chart also says BLED. That is medical, not a trip. Do not back him on the excuse.",
-    day: null, race: null, call: "" },
+    day: null, race: null, post: null, ml: "", call: "" },
+
+  // ---- Churchill Downs, Sep 10-27. Dirt-first, because Keeneland's fall
+  // meet is ~61% dirt and the list above is all turf. ----
+  { id: "stomp", name: "Stomp", trainer: "Ron Moquett", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 16 Churchill R8 · 7f dirt · 2nd of 7, btn 1 1/4, 16.28-1",
+    note: "Pinched at the start, lacked room early, chased the pacesetters, swept past.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "throttle", name: "Throttle", trainer: "Brad Cox", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 17 Churchill R6 · 1 1/16m dirt · 2nd of 10, btn 2, 6.04-1",
+    note: "Steadied at the 7/8 pole then chased the pace and battled into the stretch before being bumped. My parser mangled this footnote once; this is the corrected read.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "rocky-raccoon", name: "Rocky Raccoon", trainer: "Steven Asmussen", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 19 Churchill R11 · 7f dirt · 4th of 11, btn 2 1/2, 8.83-1",
+    note: "Squeezed back at the break, raced off the early going after the poor start, tipped out seven wide into the upper stretch, moved up but had no final winning bid in the drive.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "hey-dey", name: "Hey Dey", trainer: "Thomas Drury Jr.", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 17 Churchill R6 · 1 1/16m dirt · 3rd of 10, btn 3 1/2, 9.80-1",
+    note: "Broke inward then was shut off nearing the 7/8 pole before altering outward into the first turn then settled and rallied while six wide into the stretch.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "benedetta", name: "Benedetta", trainer: "Steven Asmussen", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 12 Churchill R6 · 6f dirt · 4th of 7, btn 4 1/4, 19.44-1",
+    note: "Was brushed and put in tight between horses at the start, raced off of the pace along the inside, pursued in the four path into the final furlong and moved up.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "diva-warrior", name: "Diva Warrior", trainer: "Brad Cox", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 20 Churchill R6 · 6½f dirt · 2nd of 8, btn 5 3/4, 14.86-1",
+    note: "Squeezed back at the break, trailed early after the poor start, swung wide into the lane and closed well in a belated rally racing from the far outside.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "saveurequity", name: "Saveurequity", trainer: "Randy Morse", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 10 Churchill R6 · 6f dirt · 4th of 10, btn 6 1/2, 16.99-1",
+    note: "Raced closed up early and chased the pace then angled four wide into the stretch but lugged in at the 1/8 pole then ran on late.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "flaming-verdict", name: "Flaming Verdict", trainer: "Michael Maker", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 27 Churchill R1 · 6f dirt · 2nd of 9, btn 6 3/4, 6.01-1",
+    note: "Broke slowly and brushed with an outer rival while steadying in tight quarters at the start, raced off of the pace early on, gained five wide and outside of rivals into the turn, bid to vie three across turning for home but proved no match for an inner counterpart in upper stretch then managed place.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "uncle-evco", name: "Uncle Evco", trainer: "Matt Shirer", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 12 Churchill R1 · 1 1/8m dirt · 5th of 8, btn 7, 13.55-1",
+    note: "Was subtly put in tight between horses soon after the start, laid off of the pace in the two path, shifted to the four path with five furlongs to go, chased in the five path then stayed on mildly to miss show.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "oro-estrella", name: "Oro Estrella", trainer: "W. Calhoun", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 18 Churchill R1 · 5½f dirt · 2nd of 12, btn 7 1/4, 9.07-1",
+    note: "Got squeezed back at the start and was allowed to settle early, tucking in into the turn then altered nine wide at the 3/16 pole to get clear and was full of run late.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "magic-woman", name: "Magic Woman", trainer: "Robert Medina", tag: "trouble", surf: "dirt", tier: 2,
+    last: "Sep 12 Churchill R2 · 6½f dirt · 3rd of 12, btn 7 1/2, 11.60-1",
+    note: "Laid off of the pace near the inside, altered course inwardly in midstretch and ran on to gain show.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  // --- Churchill turf, the three best lines only; the turf side is already
+  // well covered by Kentucky Downs above. ---
+  { id: "baltimore-heart", name: "Baltimore Heart", trainer: "Brian Williamson", tag: "trouble", surf: "turf", tier: 2,
+    last: "Sep 18 Churchill R8 · 1 1/16m turf · 3rd of 10, btn 1 3/4, 5.36-1",
+    note: "Rated in the second flight early then steadied at the 7/8 pole and waited behind the pacesetters before making a rail bid at the top of the stretch and was gaining late.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "the-look", name: "The Look", trainer: "Brendan Walsh", tag: "trouble", surf: "turf", tier: 2,
+    last: "Sep 19 Churchill R1 · 1 1/16m turf · 3rd of 8, btn 2, 8.33-1",
+    note: "Bit awkward, then squeezed at the break, raced near the back after the poor start racing in hand, advanced into the far turn, five wide into the upper stretch, shifted in and finished gamely to the wire.",
+    day: null, race: null, post: null, ml: "", call: "" },
+  { id: "mechaya", name: "Mechaya", trainer: "James DiVito", tag: "trouble", surf: "turf", tier: 2,
+    last: "Sep 27 Churchill R8 · 5½f turf · 3rd of 12, btn 2 1/2, 5.05-1",
+    note: "Raced along the inside early on, was steadied entering the turn, remained near the rail into the lane, rallied down the lane, split horses late and was gaining in the late stages.",
+    day: null, race: null, post: null, ml: "", call: "" },
 ];
 
 const DAY_LABEL = { fri: "Friday · Oct 2", sat: "Saturday · Oct 3", sun: "Sunday · Oct 4" };
-const TAG_COLOR = { trouble: GREEN, avoid: LOSS, mine: "#8A6D1F" };
-const TAG_LABEL = { trouble: "Trip trouble", avoid: "Do not back", mine: "Yours" };
+const TAG_COLOR = { trouble: GREEN, avoid: LOSS, stakes: "#1F4E79", watch: "#6B6A5E", mine: "#8A6D1F" };
+const TAG_LABEL = { trouble: "Trip trouble", avoid: "Do not back", stakes: "Stakes", watch: "Watch", mine: "Yours" };
 
 function Horses({ horses, onStar, onAdd, onDrop }) {
   const [q, setQ] = useState("");
@@ -1192,10 +1334,15 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
   const groups = order
     .map((d) => ({
       key: d,
-      label: d ? DAY_LABEL[d] : "Watch list — no race yet",
+      label: d ? DAY_LABEL[d] : "Not entered Oct 2–4 · rest of the meet",
       rows: list
         .filter((h) => (h.day || "") === d)
-        .sort((a, b) => (Number(a.race) || 99) - (Number(b.race) || 99) || (a.tier || 9) - (b.tier || 9)),
+        .sort(
+          (a, b) =>
+            (Number(a.race) || 99) - (Number(b.race) || 99) ||
+            (Number(a.post) || 99) - (Number(b.post) || 99) ||
+            (a.tier || 9) - (b.tier || 9)
+        ),
     }))
     .filter((g) => g.rows.length);
 
@@ -1217,6 +1364,15 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
 
   return (
     <div className="px-4 py-3">
+      <div
+        style={{ background: "#F6E9C8", border: `1px solid ${AMBER}`, color: INK }}
+        className="rounded p-2 mb-3 text-xs leading-relaxed"
+      >
+        <b>Check the board before you bet a turf race.</b> Rain is forecast
+        hardest Friday. Keeneland keeps the G1s on grass and moves the non-stakes
+        turf races first — Fri R5 and R10, Sat R3, Sun R5 are the exposed ones.
+        A race off the turf is a different race.
+      </div>
       <input
         id="horse-search"
         value={q}
@@ -1335,6 +1491,15 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
                     </span>
                   ) : null}
                   {h.name}
+                  {h.post ? (
+                    <span
+                      style={{ fontFamily: "ui-monospace, monospace", color: "#7C7B70" }}
+                      className="text-xs"
+                    >
+                      {" "}
+                      ({h.post}){h.ml ? " " + h.ml : ""}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex gap-2 items-center mt-1">
                   <span
@@ -1343,6 +1508,17 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
                   >
                     {TAG_LABEL[h.tag] || h.tag}
                   </span>
+                  {h.surf && (
+                    <span
+                      style={{
+                        border: `1px solid ${RULE}`,
+                        color: h.surf === "dirt" ? "#8A6D1F" : GREEN,
+                      }}
+                      className="text-xs px-1 rounded"
+                    >
+                      {h.surf}
+                    </span>
+                  )}
                   {h.trainer && (
                     <span style={{ color: "#7C7B70" }} className="text-xs truncate">
                       {h.trainer}
@@ -1376,10 +1552,14 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
       ))}
 
       <p style={{ color: "#7C7B70" }} className="text-xs mt-2 leading-relaxed">
-        {HORSES.length} horses off the Kentucky Downs charts. They get a race
-        number and a call once Keeneland entries are drawn; until then they sit
-        in the watch list. Anything you add is saved on this phone and rides
-        along in Copy log.
+        {HORSES.length} horses off the Kentucky Downs and Churchill charts
+        (1,935 runners parsed, dirt and turf).{" "}
+        {HORSES.filter((h) => h.day).length} of them are entered Oct 2–4 and
+        carry a race, post and call — verified against the published entries on
+        Oct 1. The rest are kept for the back half of the meet. Posts and morning
+        lines move with scratches: the program at the gate wins any argument with
+        this screen. Anything you add is saved on this phone and rides along in
+        Copy log.
       </p>
     </div>
   );
