@@ -1559,10 +1559,18 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
         style={{ background: "#F6E9C8", border: `1px solid ${AMBER}`, color: INK }}
         className="rounded p-2 mb-3 text-xs leading-relaxed"
       >
-        <b>Check the board before you bet a turf race.</b> Turf races are marked{" "}
-        <span style={{ color: GREEN }}>▲</span>. Keeneland keeps the G1s on grass
-        and moves the non-stakes turf races first. A race off the turf is a
-        different race.
+        <b>Oct 2 — the card changes halfway through.</b> Lexington took 0.00"
+        in the last 24 hours, so both surfaces start dry; the front arrives
+        around midday with 0.25–0.50" and a few downpours. Races 1–4 run on a
+        firm course and a fast track. From roughly R5 (3:08) on, the ground is
+        getting wet while they run.
+        <div style={{ marginTop: 6 }}>
+          <b>So R8 (4:44) and R10 (5:48) are the off-turf risks</b>, not R5.
+          Nothing has been pulled as of this morning. Turf races are marked{" "}
+          <span style={{ color: GREEN }}>▲</span> — check the board anyway, and
+          watch the late dirt races (R7 Phoenix 4:12, R9 Alcibiades 5:16) for a
+          sealed track, where the speed bias gets worse.
+        </div>
         <div style={{ marginTop: 6 }}>
           <b>Trainer win% is already in the price.</b> Cox is 34.5% dirt / 32.1%
           turf here — no split to exploit. The edges are the splits one number
