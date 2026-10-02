@@ -1116,19 +1116,25 @@ const HORSES = [
     last: "Sep 5 Kentucky Downs R10 · 6½f turf · 5th of 12, btn 1¼, 26.2-1",
     note: "Reads like a gift — beaten a length and a quarter at 26-1, caught in tight between runners into deep stretch. But the chart also says BLED. That is medical, not a trip.",
     day: "fri", race: "5", post: 10, ml: "9/2",
-    call: "He is in YOUR race and he is the 9/2 second choice. The market has moved to him on the trip line and ignored the bleed. Do not back him. If he wins, he wins without you." },
+    call: "He is in YOUR race (now 14 runners) and he is the 9/2 second choice. The program backs the money: top SPEED fig in the race (88) and tied-top CLASS (115). Everything says bet him except the word BLED. Do not back him. If he wins, he wins without you — that is a correct pass, not a bad beat. Note he is NOT the speed here: Office has a 108 pace fig from post 13." },
 
   { id: "mad-house", name: "Mad House", trainer: "David VanWinkle", tag: "stakes", surf: "dirt", tier: 1,
     last: "No start in my chart window — no footnote evidence either way.",
     note: "",
     day: "fri", race: "7", post: 1, ml: "10/1",
-    call: "Phoenix (G2), 6f dirt, 11 runners. Speed from the one hole on a main track the rain is likely to seal. Structural play of the weekend: right post, right surface trend, 10/1." },
+    call: "REVISED Oct 2. Phoenix (G2), 6f dirt. I called him the structural play assuming an uncontested lead — wrong. Program pace figs: Viking 103, Jack's Promise 103, Mad House 102, Verifire 101. Contested speed, and on a sealed track contested speed cooks itself. Still live at 10/1 on a 95 speed fig, but as a horse, not a lock on the shape. Trainer 5% for the meet." },
 
   { id: "nakatomi", name: "Nakatomi", trainer: "Wesley Ward", tag: "stakes", surf: "dirt", tier: 1,
     last: "No start in my chart window.",
     note: "",
     day: "fri", race: "7", post: 10, ml: "7/2",
-    call: "Phoenix (G2), 6f dirt. Ward is 15-for-33 (45.5%) on the Keeneland main track. This is the Ward horse to take this weekend — not the Woodford one. Post 10 of 11 is the cost." },
+    call: "REVISED Oct 2. Pass. His program pace fig is 93 — lowest of the live horses — so the Ward main-track number I leaned on describes a horse who closes, which is the wrong style for a sealed track. My two arguments were fighting each other. 7/2 from post 10 of 11 is not the price to find out." },
+
+  { id: "hymn", name: "Hymn", trainer: "Ron Moquett", tag: "stakes", surf: "dirt", tier: 1,
+    last: "No start in my chart window.",
+    note: "Best program figures in the Phoenix: SPEED 100 and CLASS 121, both tops in the race.",
+    day: "fri", race: "7", post: 8, ml: "4/1",
+    call: "Added Oct 2. I dismissed him as 'not in my charts' and never looked — that was lazy. On figures he is the best horse in the race and he is third choice. The strike against: Moquett is 0-for-13 on the Keeneland main track across the last two meets. Interesting on paper rather than the answer." },
 
   { id: "no-nay-hudson", name: "No Nay Hudson (IRE)", trainer: "Wesley Ward", tag: "avoid", surf: "turf", tier: 1,
     last: "No start in my chart window.",
@@ -1188,7 +1194,7 @@ const HORSES = [
     last: "Sep 12 Churchill R10 · 1m dirt · 4th of 7, btn 4½, 6.69-1",
     note: "Stalked three wide, bid between horses turning for home, vied while being floated to the five path entering the lane, yielded when in tight in upper stretch then got outkicked for show.",
     day: "sun", race: "10", post: 5, ml: "",
-    call: "Bourbon (G2) — but his only line in my data is on DIRT, and he was bet to 6.69-1 with a trouble note. He is the one Bourbon runner with proven main-track form. If this race comes off the turf, he is the play, and the board will be slow to notice." },
+    call: "Bourbon (G2) — his only line in my data is on DIRT, bet to 6.69-1 with a trouble note. The one Bourbon runner with proven main-track form, so if this race comes off the turf he is live. Weaker than I first said though: McPeek is 9% on the Keeneland main track (5-for-55) and 20% on its turf. The horse's dirt form is real; the barn's local dirt record is not." },
 
   // ---- Not entered Oct 2-4. Kentucky Downs trip-trouble shortlist, kept for
   // the rest of the meet. These sit in the bottom group until one turns up
@@ -1372,6 +1378,12 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
         hardest Friday. Keeneland keeps the G1s on grass and moves the non-stakes
         turf races first — Fri R5 and R10, Sat R3, Sun R5 are the exposed ones.
         A race off the turf is a different race.
+        <div style={{ marginTop: 6 }}>
+          <b>Trainer win% is already in the price.</b> Cox is 25% and no secret:
+          34.5% dirt / 32.1% turf here, no split to exploit. The edges are the
+          splits one number hides — Ward 45% dirt vs 6% turf, Casse 4% dirt
+          (1-for-24) vs 22% turf, Asmussen 15% dirt vs 6% turf. See Trainers.
+        </div>
       </div>
       <input
         id="horse-search"
