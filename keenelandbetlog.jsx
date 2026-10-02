@@ -41,6 +41,21 @@ const DAYS = [
 ];
 
 const TYPES = ["Win", "Place", "Show", "Exacta", "Turf P3"];
+
+// Exacta box maths. Keeneland's exacta minimum is $1, so a box of n horses is
+// n*(n-1) combinations at the base amount: 3 horses = $6, 4 = $12, 8 = $56.
+// Those match the cost table printed in the program.
+const BASES = [1, 2];
+const boxNums = (str) => {
+  const seen = [];
+  (String(str || "").match(/\d{1,2}/g) || []).forEach((n) => {
+    const v = String(Number(n));
+    if (Number(v) > 0 && seen.indexOf(v) === -1) seen.push(v);
+  });
+  return seen;
+};
+const boxCombos = (n) => (n >= 2 ? n * (n - 1) : 0);
+const boxCost = (nums, base) => boxCombos(nums.length) * (Number(base) || 1);
 const ANGLES = ["Trip trouble", "Speed / pace", "Class", "Name", "Other"];
 const CHIPS = [2, 6, 10, 18, 20];
 
@@ -275,7 +290,9 @@ function KeenelandBetLog() {
   const [saveError, setSaveError] = useState(null);
   const [bets, setBets] = useState(seed && seed.bets ? seed.bets : []);
   const [horses, setHorses] = useState(
-    seed && seed.horses ? seed.horses : { starred: {}, mine: [] }
+    seed && seed.horses
+      ? { starred: {}, mine: [], scratched: {}, ...seed.horses }
+      : { starred: {}, mine: [], scratched: {} }
   );
   const [stacks, setStacks] = useState(
     seed && seed.stacks ? seed.stacks : { handicap: 60, fun: 40 }
@@ -295,6 +312,8 @@ function KeenelandBetLog() {
     stack: "handicap",
     angle: "Trip trouble",
     note: "",
+    box: "",
+    base: 1,
   };
   const [draft, setDraft] = useState(blank);
 
@@ -307,21 +326,58 @@ function KeenelandBetLog() {
     );
   };
 
-  const addBet = () => {
-    if (!draft.horse.trim()) return;
-    const bet = {
+  const isBox = draft.type === "Exacta" && boxNums(draft.box).length >= 2;
+  const draftCost = isBox
+    ? boxCost(boxNums(draft.box), draft.base)
+    : Number(draft.stake) || 0;
+
+  const saveBet = () => {
+    const nums = boxNums(draft.box);
+    const box = draft.type === "Exacta" && nums.length >= 2;
+    if (!box && !draft.horse.trim()) return;
+    if (draft.type === "Exacta" && !box && !draft.horse.trim()) return;
+    const body = {
       ...draft,
       horse: draft.horse.trim(),
-      stake: Number(draft.stake) || 0,
+      box: box ? nums.join("-") : "",
+      base: box ? Number(draft.base) || 1 : null,
+      combos: box ? boxCombos(nums.length) : null,
+      stake: box ? boxCost(nums, draft.base) : Number(draft.stake) || 0,
       day,
-      id: Date.now(),
-      returned: null,
     };
-    const next = [...bets, bet];
+    let next;
+    if (draft.id) {
+      // editing in place — keep the id and whatever it has already returned
+      next = bets.map((b) => (b.id === draft.id ? { ...b, ...body } : b));
+    } else {
+      next = [...bets, { ...body, id: Date.now(), returned: null }];
+    }
     setBets(next);
     persist({ bets: next });
-    setDraft({ ...blank, race: Math.min(11, bet.race + 1), stack: draft.stack });
+    setDraft({
+      ...blank,
+      race: draft.id ? body.race : Math.min(11, body.race + 1),
+      stack: draft.stack,
+    });
     setAdding(false);
+  };
+
+  const startEdit = (b) => {
+    setDraft({
+      id: b.id,
+      race: b.race,
+      horse: b.horse || "",
+      odds: b.odds || "",
+      type: b.type,
+      stake: b.stake,
+      stack: b.stack,
+      angle: b.angle,
+      note: b.note || "",
+      box: b.box || "",
+      base: b.base || 1,
+    });
+    setSettling(null);
+    setAdding(true);
   };
 
   const settle = (id, amount) => {
@@ -349,6 +405,15 @@ function KeenelandBetLog() {
     persist({ horses: next });
   };
 
+  const toggleScratch = (id) => {
+    const scratched = { ...(horses.scratched || {}) };
+    if (scratched[id]) delete scratched[id];
+    else scratched[id] = true;
+    const next = { ...horses, scratched };
+    setHorses(next);
+    persist({ horses: next });
+  };
+
   const addHorse = (h) => {
     const next = { ...horses, mine: [...horses.mine, h] };
     setHorses(next);
@@ -364,6 +429,30 @@ function KeenelandBetLog() {
   };
 
   const dayBets = bets.filter((b) => b.day === day);
+
+  // Logging straight from the card. Same shape the bet form produces, so these
+  // land in Today's bets, Totals and Copy log like any other entry.
+  const quickBet = (b) => {
+    const bet = {
+      race: b.race,
+      horse: b.horse,
+      odds: b.odds || "",
+      type: b.type || "Win",
+      stake: Number(b.stake) || 0,
+      stack: b.stack || "handicap",
+      angle: b.angle || "Speed / pace",
+      note: b.note || "",
+      box: "",
+      base: null,
+      combos: null,
+      day,
+      id: Date.now(),
+      returned: null,
+    };
+    const next = [...bets, bet];
+    setBets(next);
+    persist({ bets: next });
+  };
   const stakedBy = (stack) =>
     dayBets.filter((b) => b.stack === stack).reduce((s, b) => s + b.stake, 0);
   const settled = dayBets.filter((b) => b.returned !== null);
@@ -500,6 +589,9 @@ function KeenelandBetLog() {
               style={{ background: PAPER_HI, border: `1px solid ${RULE}` }}
               className="rounded p-3"
             >
+              <div className="text-sm mb-2" style={{ color: draft.id ? BET : "#7C7B70" }}>
+                {draft.id ? "Editing a logged bet" : "New bet"}
+              </div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm">Race</span>
                 <button
@@ -531,7 +623,7 @@ function KeenelandBetLog() {
               <input
                 value={draft.horse}
                 onChange={(e) => setDraft({ ...draft, horse: e.target.value })}
-                placeholder="Horse"
+                placeholder={isBox ? "Label (optional) — e.g. Phoenix box" : "Horse"}
                 style={{ border: `1px solid ${RULE}`, background: "#fff" }}
                 className="w-full px-3 py-2 rounded mb-2 text-base"
               />
@@ -555,6 +647,56 @@ function KeenelandBetLog() {
                 ))}
               </Row>
 
+              {draft.type === "Exacta" && (
+                <div
+                  style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+                  className="rounded p-2 mb-3"
+                >
+                  <div className="text-sm mb-2">Exacta box</div>
+                  <input
+                    value={draft.box}
+                    onChange={(e) => setDraft({ ...draft, box: e.target.value })}
+                    placeholder="Program numbers, e.g. 3 5 8"
+                    inputMode="numeric"
+                    style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+                    className="w-full px-3 py-2 rounded mb-2 text-base"
+                  />
+                  <Row label="Base">
+                    {BASES.map((v) => (
+                      <Pill
+                        key={v}
+                        on={Number(draft.base) === v}
+                        onClick={() => setDraft({ ...draft, base: v })}
+                      >
+                        ${v}
+                      </Pill>
+                    ))}
+                  </Row>
+                  <div
+                    style={{ color: isBox ? INK : "#7C7B70" }}
+                    className="text-sm mt-2"
+                  >
+                    {isBox ? (
+                      <span>
+                        <b>{boxNums(draft.box).join("-")}</b> —{" "}
+                        {boxCombos(boxNums(draft.box).length)} combinations × $
+                        {draft.base} ={" "}
+                        <b style={{ fontFamily: "ui-monospace, monospace" }}>
+                          ${boxCost(boxNums(draft.box), draft.base)}
+                        </b>
+                      </span>
+                    ) : (
+                      "Two or more numbers makes a box. Leave it empty for a straight exacta and use the horse field."
+                    )}
+                  </div>
+                  {isBox && boxCost(boxNums(draft.box), draft.base) > 30 && (
+                    <div style={{ color: LOSS }} className="text-xs mt-1">
+                      That is more than half a day's handicap stack on one race.
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Row label="From">
                 <Pill
                   on={draft.stack === "handicap"}
@@ -570,6 +712,19 @@ function KeenelandBetLog() {
                 </Pill>
               </Row>
 
+              {isBox ? (
+                <Row label="Cost">
+                  <span
+                    style={{ fontFamily: "ui-monospace, monospace" }}
+                    className="text-base"
+                  >
+                    ${draftCost}
+                  </span>
+                  <span style={{ color: "#7C7B70" }} className="text-xs">
+                    set by the box
+                  </span>
+                </Row>
+              ) : (
               <Row label="Stake">
                 {CHIPS.map((c) => (
                   <Pill
@@ -587,6 +742,7 @@ function KeenelandBetLog() {
                   className="w-16 px-2 py-1 rounded text-sm"
                 />
               </Row>
+              )}
 
               <Row label="Why">
                 {ANGLES.map((a) => (
@@ -610,14 +766,17 @@ function KeenelandBetLog() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={addBet}
+                  onClick={saveBet}
                   style={{ background: GREEN, color: PAPER_HI }}
                   className="flex-1 py-3 rounded"
                 >
-                  Save bet
+                  {draft.id ? "Update bet" : isBox ? `Save box — $${draftCost}` : "Save bet"}
                 </button>
                 <button
-                  onClick={() => setAdding(false)}
+                  onClick={() => {
+                    setDraft({ ...blank, stack: draft.stack });
+                    setAdding(false);
+                  }}
                   style={{ border: `1px solid ${RULE}` }}
                   className="px-4 py-3 rounded text-sm"
                 >
@@ -653,11 +812,19 @@ function KeenelandBetLog() {
                           >
                             R{b.race}
                           </span>{" "}
+                          {b.box ? (
+                            <span style={{ fontFamily: "ui-monospace, monospace" }}>
+                              {b.box}
+                            </span>
+                          ) : null}
+                          {b.box && b.horse ? " " : ""}
                           {b.horse}
                         </div>
                         <div style={{ color: "#7C7B70" }} className="text-xs mt-1">
-                          {b.type} · ${b.stake} · {b.odds || "no odds"} ·{" "}
-                          {b.angle}
+                          {b.box
+                            ? `Exacta box · $${b.base} × ${b.combos} = $${b.stake}`
+                            : `${b.type} · $${b.stake} · ${b.odds || "no odds"}`}{" "}
+                          · {b.angle}
                           {b.stack === "fun" ? " · fun" : ""}
                         </div>
                         {b.note && (
@@ -666,16 +833,25 @@ function KeenelandBetLog() {
                       </div>
                       <div className="text-right shrink-0">
                         {net === null ? (
-                          <button
-                            onClick={() => {
-                              setSettling(b.id);
-                              setPayout("");
-                            }}
-                            style={{ border: `1px solid ${GREEN}`, color: GREEN }}
-                            className="px-3 py-2 rounded text-xs"
-                          >
-                            Settle
-                          </button>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => startEdit(b)}
+                              style={{ border: `1px solid ${RULE}`, color: "#56554C" }}
+                              className="px-2 py-2 rounded text-xs"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSettling(b.id);
+                                setPayout("");
+                              }}
+                              style={{ border: `1px solid ${GREEN}`, color: GREEN }}
+                              className="px-3 py-2 rounded text-xs"
+                            >
+                              Settle
+                            </button>
+                          </div>
                         ) : (
                           <div
                             style={{
@@ -716,13 +892,43 @@ function KeenelandBetLog() {
                       </div>
                     )}
                     {settling === b.id && (
-                      <button
-                        onClick={() => remove(b.id)}
-                        style={{ color: LOSS }}
-                        className="text-xs mt-2"
-                      >
-                        Delete this entry
-                      </button>
+                      <div className="flex gap-3 mt-2">
+                        <button
+                          onClick={() => startEdit(b)}
+                          style={{ color: "#56554C" }}
+                          className="text-xs"
+                        >
+                          Edit this entry
+                        </button>
+                        <button
+                          onClick={() => remove(b.id)}
+                          style={{ color: LOSS }}
+                          className="text-xs"
+                        >
+                          Delete this entry
+                        </button>
+                      </div>
+                    )}
+                    {net !== null && (
+                      <div className="flex gap-3 mt-2">
+                        <button
+                          onClick={() => startEdit(b)}
+                          style={{ color: "#56554C" }}
+                          className="text-xs"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSettling(b.id);
+                            setPayout("");
+                          }}
+                          style={{ color: "#56554C" }}
+                          className="text-xs"
+                        >
+                          Re-settle
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -732,8 +938,12 @@ function KeenelandBetLog() {
       ) : view === "horses" ? (
         <Horses
           day={day}
+          bets={dayBets}
+          onBet={quickBet}
+          onSettleBet={settle}
           horses={horses}
           onStar={toggleStar}
+          onScratch={toggleScratch}
           onAdd={addHorse}
           onDrop={dropHorse}
         />
@@ -1367,118 +1577,122 @@ const CARD = {
     ] },
   ],
   sun: [
-    { r: 1, dist: "7f", surf: "dirt", name: "Starter Allowance, 3+", post: "1:00", wager: "", runners: [
-      { n: 1, h: "Lil Trick", ml: "", j: "", jp: 0, t: "R. Hernandez", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Good Mojo", ml: "", j: "", jp: 0, t: "N. Casse", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Just Asap", ml: "", j: "", jp: 0, t: "S. Asmussen", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Captain Mercury", ml: "", j: "", jp: 0, t: "R. Crichton", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Il Cavallino", ml: "", j: "", jp: 0, t: "A. Shorter", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "Keep On Moving", ml: "", j: "", jp: 0, t: "M. Tomlinson", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Capital Connection", ml: "", j: "", jp: 0, t: "C. Santamaria", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Trouble Ahead", ml: "", j: "", jp: 0, t: "C. Milligan", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 1, dist: "7f", surf: "dirt", name: "Starter Allowance, 3+", post: "1:00", wager: "Pick 5 (1-5) starts", runners: [
+      { n: 1, h: "Lil Trick", ml: "6/1", j: "Jaime A. Torres", jp: 11, t: "R. Hernandez", tp: 17, w: "9/5", pa: "94", sp: "74", cl: "110" },
+      { n: 2, h: "Good Mojo", ml: "9/2", j: "Luis Saez", jp: 16, t: "N. Casse", tp: 17, w: "9/24", pa: "96", sp: "84", cl: "112" },
+      { n: 3, h: "Just Asap", ml: "6/1", j: "Keith J. Asmussen", jp: 11, t: "S. Asmussen", tp: 15, w: "9/25", pa: "86", sp: "79", cl: "111" },
+      { n: 4, h: "Captain Mercury", ml: "7/2", j: "Irad Ortiz, Jr.", jp: 24, t: "R. Crichton", tp: 19, w: "9/26", pa: "90", sp: "79", cl: "112", p: 1 },
+      { n: 5, h: "Il Cavallino", ml: "8/1", j: "Ben Curtis", jp: 14, t: "A. Shorter", tp: 8, w: "9/5", pa: "87", sp: "81", cl: "112" },
+      { n: 6, h: "Keep On Moving", ml: "10/1", j: "Axel Concepcion", jp: 12, t: "M. Tomlinson", tp: 11, w: "9/3", pa: "84", sp: "81", cl: "111" },
+      { n: 7, h: "Capital Connection", ml: "2/1", j: "Francisco Arrieta", jp: 18, t: "C. Santamaria", tp: 24, w: "9/4", pa: "94", sp: "86", cl: "113" },
+      { n: 8, h: "Trouble Ahead", ml: "20/1", j: "Emmanuel Esquivel", jp: 15, t: "C. Milligan", tp: 20, w: "9/26", pa: "89", sp: "75", cl: "110" },
     ] },
-    { r: 2, dist: "1 1/16m", surf: "dirt", name: "Maiden Claiming, 3+", post: "1:35", wager: "", runners: [
-      { n: 1, h: "Get Them Roses", ml: "", j: "", jp: 0, t: "W. Walden", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Maximum Honor", ml: "", j: "", jp: 0, t: "A. Shorter", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Bedeviled", ml: "", j: "", jp: 0, t: "S. Asmussen", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Private Show", ml: "", j: "", jp: 0, t: "S. Asmussen", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Meanstepper", ml: "", j: "", jp: 0, t: "R. Moquett", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "El Ramundo", ml: "", j: "", jp: 0, t: "T. Newton", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Money Man", ml: "", j: "", jp: 0, t: "D. Heath", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Maginnesontap", ml: "", j: "", jp: 0, t: "B. Walsh", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 2, dist: "1 1/16m", surf: "dirt", name: "Maiden Claiming $50k, 3+", post: "1:35", wager: "Pick 4 (2-5)", runners: [
+      { n: 1, h: "Get Them Roses", ml: "5/2", j: "Axel Concepcion", jp: 12, t: "W. Walden", tp: 25, w: "9/25", pa: "81", sp: "78", cl: "109" },
+      { n: 2, h: "Maximum Honor", ml: "20/1", j: "Cristian A. Torres", jp: 14, t: "A. Shorter", tp: 8, w: "7/11", pa: "74", sp: "69", cl: "107" },
+      { n: 3, h: "Bedeviled", ml: "8/1", j: "Luis Saez", jp: 16, t: "S. Asmussen", tp: 15, w: "9/23", pa: "78", sp: "72", cl: "110" },
+      { n: 4, h: "Private Show", ml: "6/1", j: "Keith J. Asmussen", jp: 11, t: "S. Asmussen", tp: 15, w: "9/9", pa: "70", sp: "76", cl: "110" },
+      { n: 5, h: "Meanstepper", ml: "15/1", j: "Rafael Bejarano", jp: 15, t: "R. Moquett", tp: 13, w: "9/4", pa: "73", sp: "65", cl: "108" },
+      { n: 6, h: "El Ramundo", ml: "20/1", j: "Jaime A. Torres", jp: 11, t: "T. Newton", tp: 13, w: "9/29", pa: "70", sp: "66", cl: "106" },
+      { n: 7, h: "Money Man", ml: "9/2", j: "Yedsit Hazlewood", jp: 22, t: "D. Heath", tp: 9, w: "9/6", pa: "82", sp: "81", cl: "110" },
+      { n: 8, h: "Maginnesontap", ml: "8/5", j: "Tyler Gaffalione", jp: 14, t: "B. Walsh", tp: 16, w: "9/25", pa: "89", sp: "78", cl: "111", p: 1 },
     ] },
-    { r: 3, dist: "6½f", surf: "dirt", name: "Claiming, 3+", post: "2:10", wager: "", runners: [
-      { n: 1, h: "Mom's Spaghetti", ml: "", j: "", jp: 0, t: "A. Navarrete", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "State Conceal", ml: "", j: "", jp: 0, t: "C. Munoz", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Way Beyond", ml: "", j: "", jp: 0, t: "S. Asmussen", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Join", ml: "", j: "", jp: 0, t: "S. Kurtz", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Stone County", ml: "", j: "", jp: 0, t: "A. Hernandez", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "City of Life", ml: "", j: "", jp: 0, t: "T. Wismer", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Kokomo Joe", ml: "", j: "", jp: 0, t: "M. Sims", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Terrapin Station", ml: "", j: "", jp: 0, t: "D. Romans", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 3, dist: "6½f", surf: "dirt", name: "Claiming $62,500, 3+", post: "2:10", wager: "", runners: [
+      { n: 1, h: "Mom's Spaghetti", ml: "5/1", j: "Yedsit Hazlewood", jp: 22, t: "A. Navarrete", tp: 10, w: "9/26", pa: "92", sp: "76", cl: "112" },
+      { n: 2, h: "State Conceal", ml: "4/1", j: "Jaime A. Torres", jp: 11, t: "C. Munoz", tp: 10, w: "9/26", pa: "90", sp: "78", cl: "110" },
+      { n: 3, h: "Way Beyond", ml: "8/1", j: "Keith J. Asmussen", jp: 11, t: "S. Asmussen", tp: 15, w: "9/26", pa: "94", sp: "80", cl: "114", p: 1 },
+      { n: 4, h: "Join", ml: "6/1", j: "Luis Saez", jp: 16, t: "S. Kurtz", tp: 10, w: "9/27", pa: "92", sp: "69", cl: "109" },
+      { n: 5, h: "Stone County", ml: "8/1", j: "Francisco Arrieta", jp: 18, t: "A. Hernandez", tp: 13, w: "9/28", pa: "94", sp: "82", cl: "109" },
+      { n: 6, h: "City Of Life", ml: "12/1", j: "William Antongeorgi, III", jp: 13, t: "T. Wismer", tp: 10, w: "9/22", pa: "97", sp: "79", cl: "110" },
+      { n: 7, h: "Kokomo Joe", ml: "6/1", j: "Dylan Machado", jp: 15, t: "M. Sims", tp: 12, w: "9/26", pa: "83", sp: "74", cl: "111" },
+      { n: 8, h: "Terrapin Station", ml: "5/2", j: "Gerardo Corrales", jp: 9, t: "D. Romans", tp: 11, w: "9/26", pa: "88", sp: "79", cl: "113" },
     ] },
     { r: 4, dist: "1 1/16m", surf: "dirt", name: "Maiden Special Weight, 2yo", post: "2:45", wager: "", runners: [
-      { n: 1, h: "Grantchester", ml: "", j: "", jp: 0, t: "I. Wilkes", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Just a Holiday", ml: "", j: "", jp: 0, t: "W. Ward", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Hickory", ml: "", j: "", jp: 0, t: "C. DeVaux", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Damavand", ml: "", j: "", jp: 0, t: "T. Pletcher", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Code of Arms", ml: "", j: "", jp: 0, t: "S. Asmussen", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "Barrel Roll", ml: "", j: "", jp: 0, t: "C. Brown", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Belzoni", ml: "", j: "", jp: 0, t: "W. Mott", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Biathlon", ml: "", j: "", jp: 0, t: "V. Oliver", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 9, h: "Magical Mikel", ml: "", j: "", jp: 0, t: "K. McPeek", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 10, h: "Stadion", ml: "", j: "", jp: 0, t: "C. Milligan", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 11, h: "Patriots Quest", ml: "", j: "", jp: 0, t: "M. Casse", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 12, h: "Jokes Reserve", ml: "", j: "", jp: 0, t: "C. Caramori", tp: 0, w: "", pa: "", sp: "", cl: "" },
+      { n: 1, h: "Grantchester", ml: "8/1", j: "Brian J. Hernandez, Jr.", jp: 12, t: "I. Wilkes", tp: 13, w: "9/26", pa: "86", sp: "73", cl: "109" },
+      { n: 2, h: "Just A Holiday", ml: "6/1", j: "Irad Ortiz, Jr.", jp: 24, t: "W. Ward", tp: 26, w: "9/27", pa: "105", sp: "69", cl: "112", p: 1 },
+      { n: 3, h: "Hickory", ml: "10/1", j: "Tyler Gaffalione", jp: 14, t: "C. DeVaux", tp: 17, w: "9/27", pa: "78", sp: "71", cl: "110" },
+      { n: 4, h: "Damavand", ml: "5/1", j: "John Velazquez", jp: 16, t: "T. Pletcher", tp: 16, w: "9/26", pa: "88", sp: "78", cl: "111" },
+      { n: 5, h: "Code Of Arms", ml: "10/1", j: "Luis Saez", jp: 16, t: "S. Asmussen", tp: 15, w: "9/16", pa: "72", sp: "68", cl: "109" },
+      { n: 6, h: "Barrel Roll", ml: "12/1", j: "Flavien Prat", jp: 24, t: "C. Brown", tp: 22, w: "9/26", pa: "77", sp: "67", cl: "110" },
+      { n: 7, h: "Belzoni", ml: "4/1", j: "Junior Alvarado", jp: 14, t: "W. Mott", tp: 16, w: "9/23", pa: "91", sp: "81", cl: "113" },
+      { n: 8, h: "Biathlon", ml: "15/1", j: "Mario Gutierrez", jp: 11, t: "V. Oliver", tp: 12, w: "9/24", pa: "96", sp: "80", cl: "112" },
+      { n: 9, h: "Magical Mikel", ml: "6/1", j: "Jareth Loveberry", jp: 17, t: "K. McPeek", tp: 16, w: "9/25", pa: "84", sp: "63", cl: "108" },
+      { n: 10, h: "Stadion", ml: "30/1", j: "Francisco Arrieta", jp: 18, t: "C. Milligan", tp: 20, w: "9/27", pa: "", sp: "", cl: "" },
+      { n: 11, h: "Patriots Quest", ml: "8/1", j: "Jose L. Ortiz", jp: 22, t: "M. Casse", tp: 16, w: "9/27", pa: "78", sp: "65", cl: "109" },
+      { n: 12, h: "Jokes Reserve", ml: "20/1", j: "Axel Concepcion", jp: 12, t: "C. Caramori", tp: 9, w: "9/26", pa: "80", sp: "63", cl: "109" },
+      { n: 13, h: "Very Happy", ml: "30/1", j: "James Graham", jp: 10, t: "J. Aranha", tp: 11, w: "9/26", pa: "84", sp: "61", cl: "110" },
+      { n: 14, h: "El Gran Ruchacha", ml: "30/1", j: "Micah Meeks", jp: 9, t: "D. Salvador", tp: 25, w: "9/19", pa: "", sp: "", cl: "" },
+      { n: 15, h: "D. C.'s Army", ml: "6/1", j: "Emmanuel Esquivel", jp: 15, t: "K. McPeek", tp: 16, w: "9/26", pa: "91", sp: "79", cl: "110" },
     ] },
-    { r: 5, dist: "5½f", surf: "turf", name: "Allowance, 3+", post: "3:20", wager: "", runners: [
-      { n: 1, h: "Golden Ale", ml: "", j: "", jp: 0, t: "F. Lucarelli", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Zambezi", ml: "", j: "", jp: 0, t: "B. Barnett", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Murdock", ml: "", j: "", jp: 0, t: "L. Rivelli", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Mountain Bear (IRE)", ml: "", j: "", jp: 0, t: "J. Kent Sweezey", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Moon Sniper", ml: "", j: "", jp: 0, t: "D. Miller", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "Max Vegas", ml: "", j: "", jp: 0, t: "M. Robertson", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Kalahari Dreams", ml: "", j: "", jp: 0, t: "P. Bauer", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Storm Cloud Rising", ml: "", j: "", jp: 0, t: "A. Cambray", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 9, h: "Ortley Avenue (IRE)", ml: "", j: "", jp: 0, t: "G. Weaver", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 10, h: "Jet Sweep Joe", ml: "", j: "", jp: 0, t: "P. McEntee", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 11, h: "Guy Smiley", ml: "", j: "", jp: 0, t: "W. Ward", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 12, h: "Twilight Delight", ml: "", j: "", jp: 0, t: "D. Leitch", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 5, dist: "5½f", surf: "turf", name: "Allowance, 3+", post: "3:20", wager: "Pick 6 (5-10) · Turf Pick 3 (5,8,10)", runners: [
+      { n: 1, h: "Golden Ale", ml: "8/1", j: "William Antongeorgi, III", jp: 13, t: "F. Lucarelli", tp: 15, w: "8/13", pa: "96", sp: "88", cl: "114" },
+      { n: 2, h: "Zambezi", ml: "12/1", j: "Edgar Morales", jp: 8, t: "B. Barnett", tp: 14, w: "9/28", pa: "89", sp: "89", cl: "115" },
+      { n: 3, h: "Murdock", ml: "15/1", j: "Jareth Loveberry", jp: 17, t: "L. Rivelli", tp: 27, w: "9/21", pa: "97", sp: "81", cl: "112" },
+      { n: 4, h: "Mountain Bear", ml: "6/1", j: "Yedsit Hazlewood", jp: 22, t: "J. Kent Sweezey", tp: 13, w: "9/27", pa: "88", sp: "77", cl: "112" },
+      { n: 5, h: "Moon Sniper", ml: "6/1", j: "Luis Saez", jp: 16, t: "D. Miller", tp: 11, w: "9/22", pa: "105", sp: "84", cl: "113" },
+      { n: 6, h: "Max Vegas", ml: "10/1", j: "Tyler Gaffalione", jp: 14, t: "M. Robertson", tp: 20, w: "8/2", pa: "", sp: "82", cl: "113" },
+      { n: 7, h: "Kalahari Dreams", ml: "12/1", j: "Junior Alvarado", jp: 14, t: "P. Bauer", tp: 12, w: "9/26", pa: "94", sp: "87", cl: "115" },
+      { n: 8, h: "Storm Cloud Rising", ml: "50/1", j: "Miguel Fernandez", jp: 20, t: "A. Cambray", tp: 4, w: "9/3", pa: "92", sp: "86", cl: "112" },
+      { n: 9, h: "Ortley Avenue", ml: "7/2", j: "Flavien Prat", jp: 24, t: "G. Weaver", tp: 16, w: "9/20", pa: "100", sp: "82", cl: "114", p: 1 },
+      { n: 10, h: "Jet Sweep Joe", ml: "20/1", j: "Cristian A. Torres", jp: 14, t: "P. McEntee", tp: 5, w: "9/26", pa: "90", sp: "80", cl: "113" },
+      { n: 11, h: "Guy Smiley", ml: "9/2", j: "John Velazquez", jp: 16, t: "W. Ward", tp: 26, w: "9/29", pa: "100", sp: "83", cl: "114" },
+      { n: 12, h: "Twilight Delight", ml: "10/1", j: "Jose L. Ortiz", jp: 22, t: "D. Leitch", tp: 21, w: "9/26", pa: "96", sp: "83", cl: "113" },
+      { n: 13, h: "Our Starry Night", ml: "6/1", j: "Yedsit Hazlewood", jp: 22, t: "P. Bauer", tp: 12, w: "9/23", pa: "98", sp: "83", cl: "113" },
     ] },
-    { r: 6, dist: "7f", surf: "dirt", name: "Claiming, 3+", post: "3:57", wager: "", runners: [
-      { n: 1, h: "Executive Chef", ml: "", j: "", jp: 0, t: "M. Puhich", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Billal", ml: "", j: "", jp: 0, t: "W. Mott", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Timing Difference", ml: "", j: "", jp: 0, t: "C. Hartman", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "High Ceiling", ml: "", j: "", jp: 0, t: "J. Sharp", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Flying Liam", ml: "", j: "", jp: 0, t: "N. Ramsey", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "Tarantino", ml: "", j: "", jp: 0, t: "D. Jacobson", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Barksdale", ml: "", j: "", jp: 0, t: "R. Diodoro", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Tom Cat Tuesday", ml: "", j: "", jp: 0, t: "S. Kurtz", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 6, dist: "7f", surf: "dirt", name: "Claiming $50k, 3+", post: "3:57", wager: "Pick 5 (6-10)", runners: [
+      { n: 1, h: "Executive Chef", ml: "20/1", j: "Francisco Arrieta", jp: 18, t: "M. Puhich", tp: 13, w: "9/28", pa: "84", sp: "84", cl: "113" },
+      { n: 2, h: "Billal", ml: "5/2", j: "Junior Alvarado", jp: 14, t: "W. Mott", tp: 16, w: "9/26", pa: "86", sp: "86", cl: "115" },
+      { n: 3, h: "Timing Difference", ml: "5/1", j: "Brian J. Hernandez, Jr.", jp: 12, t: "C. Hartman", tp: 12, w: "8/8", pa: "93", sp: "89", cl: "114", p: 1 },
+      { n: 4, h: "High Ceiling", ml: "8/1", j: "Jose L. Ortiz", jp: 22, t: "J. Sharp", tp: 19, w: "9/27", pa: "80", sp: "80", cl: "113" },
+      { n: 5, h: "Flying Liam", ml: "6/1", j: "Irad Ortiz, Jr.", jp: 24, t: "N. Ramsey", tp: 19, w: "9/26", pa: "85", sp: "81", cl: "114" },
+      { n: 6, h: "Tarantino", ml: "7/2", j: "Tyler Gaffalione", jp: 14, t: "D. Jacobson", tp: 14, w: "10/1", pa: "102", sp: "84", cl: "115" },
+      { n: 7, h: "Barksdale", ml: "9/2", j: "Cristian A. Torres", jp: 14, t: "R. Diodoro", tp: 25, w: "9/25", pa: "92", sp: "86", cl: "114" },
+      { n: 8, h: "Tom Cat Tuesday", ml: "8/1", j: "Edgar Morales", jp: 8, t: "S. Kurtz", tp: 10, w: "8/4", pa: "93", sp: "84", cl: "113" },
     ] },
-    { r: 7, dist: "7f", surf: "dirt", name: "Allowance, 3+", post: "4:34", wager: "", runners: [
-      { n: 1, h: "Amor Patriae", ml: "", j: "", jp: 0, t: "J. DiVito", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Bob's Carrot", ml: "", j: "", jp: 0, t: "C. Santamaria", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Ezum", ml: "", j: "", jp: 0, t: "B. Cox", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Overtime Rules", ml: "", j: "", jp: 0, t: "A. Delacour", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Pimlott", ml: "", j: "", jp: 0, t: "B. Walsh", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "Mount Vernon", ml: "", j: "", jp: 0, t: "C. DeVaux", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Lincoln's Law", ml: "", j: "", jp: 0, t: "P. Bauer", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Embry Show", ml: "", j: "", jp: 0, t: "B. Baffert", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 9, h: "Discotheque", ml: "", j: "", jp: 0, t: "J. Kent Sweezey", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 10, h: "Speedstorm", ml: "", j: "", jp: 0, t: "R. Moquett", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 11, h: "Tre Italiani", ml: "", j: "", jp: 0, t: "L. Rivelli", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 12, h: "Reclamation", ml: "", j: "", jp: 0, t: "C. Davis", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 7, dist: "7f", surf: "dirt", name: "Allowance, 3+", post: "4:34", wager: "Pick 4 (7-10)", runners: [
+      { n: 1, h: "Amor Patriae", ml: "20/1", j: "Francisco Arrieta", jp: 18, t: "J. DiVito", tp: 13, w: "9/13", pa: "93", sp: "81", cl: "112" },
+      { n: 2, h: "Bob's Carrot", ml: "10/1", j: "Jaime A. Torres", jp: 11, t: "C. Santamaria", tp: 24, w: "9/3", pa: "92", sp: "90", cl: "115" },
+      { n: 3, h: "Ezum", ml: "6/1", j: "Irad Ortiz, Jr.", jp: 24, t: "B. Cox", tp: 25, w: "9/27", pa: "78", sp: "81", cl: "112" },
+      { n: 4, h: "Overtime Rules", ml: "8/1", j: "Flavien Prat", jp: 24, t: "A. Delacour", tp: 22, w: "9/28", pa: "94", sp: "75", cl: "109" },
+      { n: 5, h: "Pimlott", ml: "9/2", j: "Tyler Gaffalione", jp: 14, t: "B. Walsh", tp: 16, w: "9/27", pa: "89", sp: "90", cl: "113" },
+      { n: 6, h: "Mount Vernon", ml: "15/1", j: "Jose L. Ortiz", jp: 22, t: "C. DeVaux", tp: 17, w: "9/20", pa: "68", sp: "68", cl: "109" },
+      { n: 7, h: "Lincoln's Law", ml: "5/1", j: "Junior Alvarado", jp: 14, t: "P. Bauer", tp: 12, w: "9/26", pa: "98", sp: "89", cl: "115", p: 1 },
+      { n: 8, h: "Embry Show", ml: "6/1", j: "Rafael Bejarano", jp: 15, t: "B. Baffert", tp: 31, w: "9/26", pa: "90", sp: "86", cl: "113" },
+      { n: 9, h: "Discotheque", ml: "10/1", j: "Edgar Morales", jp: 8, t: "J. Kent Sweezey", tp: 13, w: "9/24", pa: "96", sp: "90", cl: "115" },
+      { n: 10, h: "Speedstorm", ml: "20/1", j: "Yedsit Hazlewood", jp: 22, t: "R. Moquett", tp: 13, w: "9/4", pa: "98", sp: "85", cl: "114" },
+      { n: 11, h: "Tre Italiani", ml: "6/1", j: "Gerardo Corrales", jp: 9, t: "L. Rivelli", tp: 27, w: "9/16", pa: "90", sp: "86", cl: "114" },
+      { n: 12, h: "Reclamation", ml: "20/1", j: "Luis Saez", jp: 16, t: "C. Davis", tp: 12, w: "9/21", pa: "97", sp: "81", cl: "111" },
     ] },
-    { r: 8, dist: "5½f", surf: "turf", name: "Indian Summer (G3), 2yo", post: "", wager: "", runners: [
-      { n: 1, h: "Adonius (IRE)", ml: "", j: "John Velazquez", jp: 0, t: "R. Menzies", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Fanshell Beach", ml: "", j: "Jose L. Ortiz", jp: 0, t: "W. Ward", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Cactus Closer", ml: "", j: "Junior Alvarado", jp: 0, t: "D. Romans", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Crack On", ml: "", j: "Danny Sheehy", jp: 0, t: "J. Corrigan", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Love a Warrior", ml: "", j: "Luis Saez", jp: 0, t: "S. Asmussen", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "Ciarlatano", ml: "", j: "Christopher A. Emigh", jp: 0, t: "B. Vanden Berg", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Wood Island", ml: "", j: "Flavien Prat", jp: 0, t: "G. Weaver", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Ruiva", ml: "", j: "Irad Ortiz, Jr.", jp: 0, t: "W. Ward", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 9, h: "Bee Crazy", ml: "", j: "Tyler Gaffalione", jp: 0, t: "K. Danner", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 8, dist: "5½f", surf: "turf", name: "Indian Summer (G3), 2yo", post: "5:10", wager: "Late Pick 3 (8-10)", runners: [
+      { n: 1, h: "Adonius", ml: "8/1", j: "John Velazquez", jp: 16, t: "R. Menzies", tp: 0, w: "9/26", pa: "", sp: "", cl: "118" },
+      { n: 2, h: "Fanshell Beach", ml: "9/2", j: "Jose L. Ortiz", jp: 22, t: "W. Ward", tp: 26, w: "9/26", pa: "99", sp: "86", cl: "116" },
+      { n: 3, h: "Cactus Closer", ml: "15/1", j: "Junior Alvarado", jp: 14, t: "D. Romans", tp: 11, w: "9/28", pa: "92", sp: "64", cl: "109" },
+      { n: 4, h: "Crack On", ml: "12/1", j: "Danny Sheehy", jp: 10, t: "J. Corrigan", tp: 13, w: "9/27", pa: "82", sp: "75", cl: "113" },
+      { n: 5, h: "Love A Warrior", ml: "8/1", j: "Luis Saez", jp: 16, t: "S. Asmussen", tp: 15, w: "9/26", pa: "95", sp: "82", cl: "113" },
+      { n: 6, h: "Ciarlatano", ml: "20/1", j: "Christopher A. Emigh", jp: 10, t: "B. Brittany Vanden", tp: 10, w: "9/25", pa: "97", sp: "74", cl: "112" },
+      { n: 7, h: "Wood Island", ml: "7/2", j: "Flavien Prat", jp: 24, t: "G. Weaver", tp: 16, w: "9/17", pa: "89", sp: "79", cl: "114" },
+      { n: 8, h: "Ruiva", ml: "7/5", j: "Irad Ortiz, Jr.", jp: 24, t: "W. Ward", tp: 26, w: "9/26", pa: "108", sp: "99", cl: "119", p: 1 },
+      { n: 9, h: "Bee Crazy", ml: "20/1", j: "Tyler Gaffalione", jp: 14, t: "K. Danner", tp: 12, w: "9/22", pa: "94", sp: "76", cl: "112" },
     ] },
-    { r: 9, dist: "1 1/8m", surf: "dirt", name: "Juddmonte Spinster (G1), F&M 3+", post: "", wager: "", runners: [
-      { n: 1, h: "Regaled", ml: "", j: "Tyler Gaffalione", jp: 0, t: "D. Whitworth Beckman", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Counting Stars", ml: "", j: "Irad Ortiz, Jr.", jp: 0, t: "M. Casse", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Immersive", ml: "", j: "Jose L. Ortiz", jp: 0, t: "B. Cox", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Fully Subscribed", ml: "", j: "Flavien Prat", jp: 0, t: "C. Brown", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Snowyte", ml: "", j: "Luis Saez", jp: 0, t: "D. Gargan", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 9, dist: "1 1/8m", surf: "dirt", name: "Juddmonte Spinster (G1), F&M 3+", post: "5:45", wager: "", runners: [
+      { n: 1, h: "Regaled", ml: "8/1", j: "Tyler Gaffalione", jp: 14, t: "D. Whitworth Beckman", tp: 15, w: "9/19", pa: "85", sp: "93", cl: "118" },
+      { n: 2, h: "Counting Stars", ml: "5/2", j: "Irad Ortiz, Jr.", jp: 24, t: "M. Casse", tp: 16, w: "9/23", pa: "102", sp: "99", cl: "121" },
+      { n: 3, h: "Immersive", ml: "7/2", j: "Jose L. Ortiz", jp: 22, t: "B. Cox", tp: 25, w: "9/26", pa: "103", sp: "96", cl: "120" },
+      { n: 4, h: "Fully Subscribed", ml: "4/5", j: "Flavien Prat", jp: 24, t: "C. Brown", tp: 22, w: "9/26", pa: "94", sp: "101", cl: "121", p: 1 },
+      { n: 5, h: "Snowyte", ml: "15/1", j: "Luis Saez", jp: 16, t: "D. Gargan", tp: 13, w: "9/17", pa: "98", sp: "93", cl: "118" },
     ] },
-    { r: 10, dist: "1 1/16m", surf: "turf", name: "Castle & Key Bourbon (G2), 2yo", post: "", wager: "", runners: [
-      { n: 1, h: "Trim Castle", ml: "", j: "Danny Sheehy", jp: 0, t: "J. Ennis", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 2, h: "Agate", ml: "", j: "Tyler Gaffalione", jp: 0, t: "K. Danner", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 3, h: "Bold Leadership", ml: "", j: "Irad Ortiz, Jr.", jp: 0, t: "T. Pletcher", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 4, h: "Heracles", ml: "", j: "Luis Saez", jp: 0, t: "R. Spatz", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 5, h: "Real Goodbar", ml: "", j: "Jose L. Ortiz", jp: 0, t: "K. McPeek", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 6, h: "Popcorn", ml: "", j: "Axel Concepcion", jp: 0, t: "J. Thomas", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 7, h: "Mad Mo", ml: "", j: "Alex Achard", jp: 0, t: "J. Ennis", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 8, h: "Hemingway", ml: "", j: "Flavien Prat", jp: 0, t: "B. Cox", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 9, h: "Blaring Ambition", ml: "", j: "John Velazquez", jp: 0, t: "M. Maker", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 10, h: "Let Em Know", ml: "", j: "Jareth Loveberry", jp: 0, t: "D. Whitworth Beckman", tp: 0, w: "", pa: "", sp: "", cl: "" },
-      { n: 11, h: "Mid American", ml: "", j: "Jaime A. Torres", jp: 0, t: "J. DiVito", tp: 0, w: "", pa: "", sp: "", cl: "" },
+    { r: 10, dist: "1 1/16m", surf: "turf", name: "Castle & Key Bourbon (G2), 2yo", post: "6:20", wager: "Super High Five", runners: [
+      { n: 1, h: "Trim Castle", ml: "30/1", j: "Danny Sheehy", jp: 10, t: "J. Ennis", tp: 14, w: "9/25", pa: "98", sp: "75", cl: "114" },
+      { n: 2, h: "Agate", ml: "4/1", j: "Tyler Gaffalione", jp: 14, t: "K. Danner", tp: 12, w: "9/29", pa: "66", sp: "75", cl: "114" },
+      { n: 3, h: "Bold Leadership", ml: "7/2", j: "Irad Ortiz, Jr.", jp: 24, t: "T. Pletcher", tp: 16, w: "9/26", pa: "74", sp: "82", cl: "112" },
+      { n: 4, h: "Heracles", ml: "15/1", j: "Luis Saez", jp: 16, t: "R. Spatz", tp: 12, w: "9/26", pa: "73", sp: "75", cl: "112" },
+      { n: 5, h: "Real Goodbar", ml: "10/1", j: "Jose L. Ortiz", jp: 22, t: "K. McPeek", tp: 16, w: "9/26", pa: "84", sp: "80", cl: "112" },
+      { n: 6, h: "Popcorn", ml: "6/1", j: "Axel Concepcion", jp: 12, t: "J. Thomas", tp: 25, w: "9/26", pa: "62", sp: "76", cl: "111" },
+      { n: 7, h: "Mad Mo", ml: "20/1", j: "Alex Achard", jp: 16, t: "J. Ennis", tp: 14, w: "9/25", pa: "76", sp: "64", cl: "109" },
+      { n: 8, h: "Hemingway", ml: "5/2", j: "Flavien Prat", jp: 24, t: "B. Cox", tp: 25, w: "9/26", pa: "85", sp: "68", cl: "110" },
+      { n: 9, h: "Blaring Ambition", ml: "15/1", j: "John Velazquez", jp: 16, t: "M. Maker", tp: 18, w: "9/26", pa: "76", sp: "75", cl: "114" },
+      { n: 10, h: "Let Em Know", ml: "20/1", j: "Jareth Loveberry", jp: 17, t: "D. Whitworth Beckman", tp: 15, w: "9/27", pa: "82", sp: "77", cl: "113" },
+      { n: 11, h: "Mid American", ml: "10/1", j: "Jaime A. Torres", jp: 11, t: "J. DiVito", tp: 13, w: "9/27", pa: "95", sp: "78", cl: "114", p: 1 },
     ] },
   ],
 };
@@ -1533,7 +1747,22 @@ const PICKS = {
   "sat-9-3": { k: "w", why: "12/1 in a six-horse G1. Price without much support." },
   "sat-10-5": { k: "w", why: "8/1, Bill Mott, a 95 speed figure — one off Kupuna at half the price." },
   "sat-10-4": { k: "w", why: "15/1, figures a shade below Kupuna's." },
+  "sun-3-3": { k: "b", why: "8/1 and the clear top of the race on figures — a 114 class figure where the rest of the field is 109-113, with a 94 pace. Asmussen is 15% on this main track." },
+  "sun-5-2": { k: "b", why: "Best speed (89) AND best class (115) in a 13-horse turf sprint, at 12/1. Sunday is the driest day, so this one should actually stay on the grass." },
+  "sun-7-2": { k: "b", why: "10/1 with a 90 speed and 115 class, top of the race on adjusted score. Seven furlongs on dirt, a surface that should be dry again by Sunday." },
+  "sun-10-5": { k: "b", why: "Bourbon. CORRECTED Oct 4 — I used the wrong half of McPeek's split against him. This is a TURF race and McPeek is 20% on the Keeneland turf course, not the 9% dirt figure I quoted. Second on figures at 10/1. And the program says if the Bourbon comes off the grass it runs 1 1/16m on the MAIN track — his surface, where his one chart line is." },
+  "sun-5-7": { k: "w", why: "12/1 with the best pace figure of the three overlays (94) and the same 115 class. Take this one instead if Zambezi gets bet under 8/1." },
+  "sun-5-1": { k: "w", why: "8/1, 96 pace and an 88 speed. The third of three live prices in this race — I am only betting one of them." },
+  "sun-10-11": { k: "w", why: "REVISED Oct 4. A 95 pace figure, the best in the Bourbon by eleven points, in a race where most of the field is in the 70s-80s. That changes my read: from post 11 he may simply be the speed rather than a stalker stuck wide. Top class figure too. 10/1." },
+  "sun-10-3": { k: "w", why: "7/2 favourite on figures that are good but not dominant — 82 speed, 112 class, and a 74 pace that is near the bottom of the race." },
+  "sun-10-10": { k: "w", why: "20/1, a 113 class figure and nothing else to recommend it. Price only." },
+  "sun-4-8": { k: "w", why: "15/1, second on figures in a 15-horse 2yo maiden. Maiden races are where my method is weakest — figures there select the experienced loser over the improving firster — so this stays a wheel." },
+  "sun-7-9": { k: "w", why: "10/1, 90 speed and 115 class, a whisker behind Bob's Carrot. Second string in the same race." },
+  "sun-6-3": { k: "w", why: "5/1 with the best speed figure in the race (89). Short for a wheel but the figure is real." },
+  "sun-9-3": { k: "w", why: "REVISED Oct 4. Spinster. Her figures are better than I implied — 103 pace, 96 speed, 120 class, second best in the race behind a 4/5 favourite. I called her last line bad and dismissed her; the chart line was bad, the horse is not. Still no price at 7/2 in a five-horse field." },
+  "sun-8-8": { k: "w", why: "Indian Summer. CORRECTED Oct 4 — I said neither Ward runner was worth backing, as if neither had ability. Her figures are the best in the race by a distance: 108 pace, 99 speed, 119 class. The reason to leave her alone is the 7/5 price against Ward being 2-for-32 on this turf course, not a lack of talent." },
 };
+
 
 
 // ---- My notes, attached to the runners they apply to. Everything else on
@@ -1545,14 +1774,14 @@ const NOTES = {
   "hymn": { tag: "stakes", last: "Best figures in the race: SPEED 100, CLASS 121, both tops.", call: "Added Oct 2. I dismissed him as 'not in my charts' and never looked. On figures the best horse here, at third choice. Strike against: Moquett is 0-for-13 on the Keeneland main track across the last two meets." },
   "nonayhudson": { tag: "avoid", last: "No start in my chart window.", call: "Ward on the GRASS, where he is 2-for-32 at Keeneland — the opposite side of the split from Nakatomi. 8/1 does not buy that." },
   "brilliantberti": { tag: "watch", last: "Won at Kentucky Downs in my window, clean trip.", call: "A G1 that stays on grass whatever the weather. 6/1 in a nine-horse field is fair, not generous." },
-  "immersive": { tag: "avoid", last: "3rd of 4 in my window, beaten 8½, no trouble in the footnote.", call: "A bad line, not an excuse — in a five-horse field with no price. Watch it, don't bet it." },
-  "guysmiley": { tag: "watch", last: "Won for Ward at Kentucky Downs.", call: "Ward won with him on KD grass, but this is the Keeneland turf course (2-for-32). Those two facts fight. Let the price settle it, and only if the race stays on grass." },
-  "fanshellbeach": { tag: "avoid", last: "No start in my chart window.", call: "One of two Ward runners in here, on the surface where he is 2-for-32." },
-  "ruiva": { tag: "avoid", last: "No start in my chart window.", call: "The second Ward runner. Two from one barn in a nine-horse turf sprint is a pace note, not a reason to back either." },
-  "midamerican": { tag: "stakes", last: "Aug 29 Kentucky Downs R6 · 6½f turf · WON by 1¼ at 5.35-1. Rated off the pace, saved ground to the turn, took command in the final furlong.", call: "Genuine stalker and the style wants a route — but post 11 of 11 stretching out on a tight course is the bigger fact. Needs to be past 8-1." },
-  "agate": { tag: "stakes", last: "Sep 9 Kentucky Downs R11 · 1m turf · 3rd of 12, btn 6¼, 5.58-1. Took a bad step and was bumped nearing the five-furlong marker.", call: "Best of the Bourbon group on merit: real trouble at a real price, and post 2 is the opposite of Mid American's problem." },
-  "trimcastle": { tag: "avoid", last: "Sep 9 Kentucky Downs R11 · 1m turf · 5th of 12, btn 11½, 40.19-1. Also 3rd of 9 Aug 29 at 4.42-1.", call: "Two lines and the route one is the 40-1 flop. No case." },
-  "realgoodbar": { tag: "trouble", last: "Sep 12 Churchill R10 · 1m DIRT · 4th of 7, btn 4½, 6.69-1. Floated five wide, in tight in upper stretch.", call: "The one Bourbon runner with proven main-track form, so if this race comes off the turf he is live. Weaker than I first said: McPeek is 5-for-55 (9%) on Keeneland dirt, 20% on its turf. The horse's dirt form is real; the barn's local dirt record is not." },
+  "immersive": { tag: "avoid", last: "3rd of 4 in my window, beaten 8½, no trouble in the footnote.", call: "REVISED Oct 4. Her program figures are good — 103 pace, 96 speed, 120 class, second best in a five-horse G1. I called her last line bad and let that stand in for the horse. The chart line was bad; she is not. Still not a bet at 7/2 with no price in the field." },
+  "guysmiley": { tag: "watch", last: "Won for Ward at Kentucky Downs.", call: "Oct 4: he is not in Sunday R5. The 5½f turf allowance has three better-priced runners on figures — see the wheels in that race." },
+  "fanshellbeach": { tag: "avoid", last: "No start in my chart window.", call: "Oct 4: 9/2, 99 pace, 86 speed. The second Ward runner and the weaker of the two on figures. Same turf-course problem, less upside." },
+  "ruiva": { tag: "avoid", last: "No start in my chart window.", call: "CORRECTED Oct 4. I wrote this off as a pace note. Her figures are the best in the Indian Summer by a distance — 108 pace, 99 speed, 119 class. The reason to pass is the 7/5 price against Ward's 2-for-32 on this turf course, not a lack of ability." },
+  "midamerican": { tag: "stakes", last: "Aug 29 Kentucky Downs R6 · 6½f turf · WON by 1¼ at 5.35-1. Rated off the pace, saved ground to the turn, took command in the final furlong.", call: "REVISED Oct 4. His 95 pace figure is the best in the Bourbon by eleven points and most of the field is in the 70s-80s. From post 11 he may simply outrun them to the first turn rather than being a stalker stuck wide. Top class figure as well, at 10/1." },
+  "agate": { tag: "stakes", last: "Sep 9 Kentucky Downs R11 · 1m turf · 3rd of 12, btn 6¼, 5.58-1. Took a bad step and was bumped nearing the five-furlong marker.", call: "REVISED Oct 4 — I oversold him. He is the 4/1 SECOND choice, not a price, and the program figures are the weakest of the Bourbon horses I liked: 66 pace, 75 speed. The Kentucky Downs trouble line is real; the value is not. Pass." },
+  "trimcastle": { tag: "avoid", last: "Sep 9 Kentucky Downs R11 · 1m turf · 5th of 12, btn 11½, 40.19-1. Also 3rd of 9 Aug 29 at 4.42-1.", call: "Oct 4: now 30/1, and the figures agree with the price — 75 speed, bottom of the race. No change: pass." },
+  "realgoodbar": { tag: "trouble", last: "Sep 12 Churchill R10 · 1m DIRT · 4th of 7, btn 4½, 6.69-1. Floated five wide, in tight in upper stretch.", call: "CORRECTED Oct 4. I applied the wrong half of McPeek's split — the Bourbon is TURF, where he is 20% at Keeneland, not the 9% dirt number I used against him. Second on figures at 10/1. And the program states the off-turf plan is 1 1/16m on the MAIN track, which is his surface. He is better than I said, both ways the weather breaks." },
 };
 
 const DAY_LABEL = { fri: "Friday · Oct 2", sat: "Saturday · Oct 3", sun: "Sunday · Oct 4" };
@@ -1567,14 +1796,42 @@ const nkey = (n) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
-function Horses({ day, horses, onStar, onAdd, onDrop }) {
+function Horses({
+  day,
+  bets,
+  onBet,
+  onSettleBet,
+  horses,
+  onStar,
+  onScratch,
+  onAdd,
+  onDrop,
+}) {
+  const scr = horses.scratched || {};
   const [q, setQ] = useState("");
   const [only, setOnly] = useState("all");
   const [open, setOpen] = useState({});
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ name: "", race: "", note: "" });
+  const [betting, setBetting] = useState(null); // "race-num" being bet
+  const [bd, setBd] = useState({ stake: 10, stack: "handicap", type: "Win", odds: "" });
+  const [cashing, setCashing] = useState(null);
+  const [cashAmt, setCashAmt] = useState("");
 
   const races = CARD[day] || [];
+
+  // Bets already attached to a runner: a straight bet on the name, or an
+  // exacta box that contains this program number.
+  const betsOn = (raceNo, num, horse) =>
+    (bets || []).filter(
+      (b) =>
+        Number(b.race) === Number(raceNo) &&
+        (b.box
+          ? String(b.box).split("-").indexOf(String(num)) !== -1
+          : nkey(b.horse) === nkey(horse))
+    );
+  const betsInRace = (raceNo) =>
+    (bets || []).filter((b) => Number(b.race) === Number(raceNo));
   const needle = q.trim().toLowerCase();
   const rid = (r, n) => day + "-" + r + "-" + n;
 
@@ -1584,9 +1841,14 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
     (x.t || "").toLowerCase().includes(needle);
 
   const shown = (r) =>
-    r.runners.filter(
-      (x) => hit(x) && (only === "all" || horses.starred[rid(r.r, x.n)])
-    );
+    r.runners
+      .filter((x) => hit(x) && (only === "all" || horses.starred[rid(r.r, x.n)]))
+      .slice()
+      .sort(
+        (a, b) =>
+          (scr[rid(r.r, a.n)] ? 1 : 0) - (scr[rid(r.r, b.n)] ? 1 : 0) ||
+          a.n - b.n
+      );
 
   const save = () => {
     if (!draft.name.trim()) return;
@@ -1740,6 +2002,9 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
         const flagged = r.runners.filter((x) => NOTES[nkey(x.h)]).length;
         const pk = (x) => PICKS[day + "-" + r.r + "-" + x.n] || {};
         const bets = r.runners.filter((x) => pk(x).k === "b").length;
+        const outs = r.runners.filter((x) => scr[rid(r.r, x.n)]).length;
+        const down = betsInRace(r.r);
+        const downAmt = down.reduce((a, b) => a + (Number(b.stake) || 0), 0);
         const wheels = r.runners.filter((x) => pk(x).k === "w").length;
         return (
           <div key={r.r} className="mb-2">
@@ -1775,9 +2040,26 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
                   ●{flagged}
                 </span>
               )}
+              {downAmt > 0 && (
+                <span
+                  style={{ color: WIN, fontFamily: "ui-monospace, monospace" }}
+                  className="text-xs"
+                >
+                  ${downAmt}
+                </span>
+              )}
               <span style={{ color: "#7C7B70" }} className="text-xs">
                 {r.post && r.post + " · "}
-                {r.runners.length}
+                {outs > 0 ? (
+                  <span>
+                    <span style={{ textDecoration: "line-through" }}>
+                      {r.runners.length}
+                    </span>{" "}
+                    <b style={{ color: LOSS }}>{r.runners.length - outs}</b>
+                  </span>
+                ) : (
+                  r.runners.length
+                )}
               </span>
               <span style={{ color: "#7C7B70" }} className="text-xs">
                 {isOpen ? "▾" : "▸"}
@@ -1789,16 +2071,27 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
                 {r.wager}
               </div>
             )}
+            {outs > 0 && (
+              <div style={{ color: LOSS }} className="text-xs mt-1">
+                {outs} scratched — that money redistributes, so everything left
+                shortens. Re-check the board before you bet this race.
+              </div>
+            )}
 
             {isOpen &&
               rows.map((x) => {
                 const note = NOTES[nkey(x.h)];
                 const pick = PICKS[day + "-" + r.r + "-" + x.n];
                 const id = rid(r.r, x.n);
+                const myBets = betsOn(r.r, x.n, x.h);
+                const out = !!scr[id];
                 return (
                   <div
                     key={x.n}
-                    style={{ borderBottom: `1px solid ${RULE}` }}
+                    style={{
+                      borderBottom: `1px solid ${RULE}`,
+                      opacity: out ? 0.45 : 1,
+                    }}
                     className="py-2 flex gap-2 items-start"
                   >
                     <button
@@ -1810,7 +2103,10 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
                       ★
                     </button>
                     <div className="min-w-0 flex-1">
-                      <div className="text-base">
+                      <div
+                        className="text-base"
+                        style={{ textDecoration: out ? "line-through" : "none" }}
+                      >
                         <span
                           style={{ fontFamily: "ui-monospace, monospace", color: "#7C7B70" }}
                         >
@@ -1832,13 +2128,26 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
                             ★prog
                           </span>
                         ) : null}
-                        {pick && (
+                        {pick && !out && (
                           <span
                             style={{ color: pick.k === "b" ? BET : WHEEL, fontWeight: 700 }}
                             className="text-base"
                           >
                             {" "}
                             {pick.k === "b" ? "✻" : "☸"}
+                          </span>
+                        )}
+                        {out && (
+                          <span
+                            style={{
+                              color: LOSS,
+                              border: `1px solid ${LOSS}`,
+                              textDecoration: "none",
+                              display: "inline-block",
+                            }}
+                            className="text-xs px-1 rounded ml-1"
+                          >
+                            SCR
                           </span>
                         )}
                       </div>
@@ -1894,6 +2203,222 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
                           {pick.why}
                         </div>
                       )}
+
+                      {myBets.map((b) => {
+                        const net =
+                          b.returned === null ? null : b.returned - b.stake;
+                        return (
+                          <div
+                            key={b.id}
+                            style={{
+                              background: PAPER_HI,
+                              border: `1px solid ${RULE}`,
+                            }}
+                            className="rounded px-2 py-1 mt-1 text-xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span style={{ fontFamily: "ui-monospace, monospace" }}>
+                                ${b.stake}
+                              </span>
+                              <span>
+                                {b.box ? `box ${b.box}` : b.type}
+                                {b.odds ? " · " + b.odds : ""}
+                                {b.stack === "fun" ? " · fun" : ""}
+                              </span>
+                              <span className="flex-1" />
+                              {net === null ? (
+                                <button
+                                  onClick={() => {
+                                    setCashing(cashing === b.id ? null : b.id);
+                                    setCashAmt("");
+                                  }}
+                                  style={{ color: GREEN }}
+                                >
+                                  settle
+                                </button>
+                              ) : (
+                                <span
+                                  style={{
+                                    color: net >= 0 ? WIN : LOSS,
+                                    fontFamily: "ui-monospace, monospace",
+                                  }}
+                                >
+                                  {money(net)}
+                                </span>
+                              )}
+                            </div>
+                            {cashing === b.id && (
+                              <div className="flex gap-1 mt-1 items-center">
+                                <input
+                                  value={cashAmt}
+                                  onChange={(e) => setCashAmt(e.target.value)}
+                                  placeholder="returned"
+                                  inputMode="decimal"
+                                  style={{
+                                    border: `1px solid ${RULE}`,
+                                    background: "#fff",
+                                  }}
+                                  className="flex-1 px-2 py-1 rounded"
+                                />
+                                <button
+                                  onClick={() => {
+                                    onSettleBet(b.id, cashAmt);
+                                    setCashing(null);
+                                  }}
+                                  style={{ background: GREEN, color: PAPER_HI }}
+                                  className="px-2 py-1 rounded"
+                                >
+                                  cashed
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    onSettleBet(b.id, 0);
+                                    setCashing(null);
+                                  }}
+                                  style={{ border: `1px solid ${RULE}` }}
+                                  className="px-2 py-1 rounded"
+                                >
+                                  tore up
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {betting === id ? (
+                        <div
+                          style={{ background: PAPER_HI, border: `1px solid ${RULE}` }}
+                          className="rounded p-2 mt-2"
+                        >
+                          <div className="flex gap-1 flex-wrap items-center mb-2">
+                            {["Win", "Place", "Show"].map((t) => (
+                              <button
+                                key={t}
+                                onClick={() => setBd({ ...bd, type: t })}
+                                style={{
+                                  border: `1px solid ${bd.type === t ? GREEN : RULE}`,
+                                  background: bd.type === t ? GREEN : "transparent",
+                                  color: bd.type === t ? PAPER_HI : INK,
+                                }}
+                                className="px-2 py-1 rounded text-xs"
+                              >
+                                {t}
+                              </button>
+                            ))}
+                            <span className="flex-1" />
+                            {["handicap", "fun"].map((k) => (
+                              <button
+                                key={k}
+                                onClick={() =>
+                                  setBd({ ...bd, stack: k, stake: k === "fun" ? 2 : 10 })
+                                }
+                                style={{
+                                  border: `1px solid ${bd.stack === k ? GREEN : RULE}`,
+                                  color: bd.stack === k ? GREEN : "#7C7B70",
+                                }}
+                                className="px-2 py-1 rounded text-xs"
+                              >
+                                {k === "handicap" ? "Handicap" : "Fun"}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-1 flex-wrap items-center mb-2">
+                            {CHIPS.map((c) => (
+                              <button
+                                key={c}
+                                onClick={() => setBd({ ...bd, stake: c })}
+                                style={{
+                                  border: `1px solid ${
+                                    Number(bd.stake) === c ? GREEN : RULE
+                                  }`,
+                                  background:
+                                    Number(bd.stake) === c ? GREEN : "transparent",
+                                  color: Number(bd.stake) === c ? PAPER_HI : INK,
+                                }}
+                                className="px-2 py-1 rounded text-xs"
+                              >
+                                ${c}
+                              </button>
+                            ))}
+                            <input
+                              value={bd.stake}
+                              onChange={(e) => setBd({ ...bd, stake: e.target.value })}
+                              inputMode="decimal"
+                              style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+                              className="w-14 px-2 py-1 rounded text-xs"
+                            />
+                            <input
+                              value={bd.odds}
+                              onChange={(e) => setBd({ ...bd, odds: e.target.value })}
+                              placeholder="odds at post"
+                              style={{ border: `1px solid ${RULE}`, background: "#fff" }}
+                              className="flex-1 px-2 py-1 rounded text-xs"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                onBet({
+                                  race: r.r,
+                                  horse: x.h,
+                                  odds: bd.odds || x.ml.replace("/", "-"),
+                                  type: bd.type,
+                                  stake: bd.stake,
+                                  stack: bd.stack,
+                                  angle: pick ? "Speed / pace" : "Other",
+                                  note: pick ? "Off the card" : "",
+                                });
+                                setBetting(null);
+                                setBd({ stake: 10, stack: "handicap", type: "Win", odds: "" });
+                              }}
+                              style={{ background: GREEN, color: PAPER_HI }}
+                              className="flex-1 py-2 rounded text-sm"
+                            >
+                              Log ${bd.stake} {bd.type.toLowerCase()} on {x.h}
+                            </button>
+                            <button
+                              onClick={() => setBetting(null)}
+                              style={{ border: `1px solid ${RULE}` }}
+                              className="px-3 py-2 rounded text-xs"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 mt-2 items-center">
+                          {!out && (
+                            <button
+                              onClick={() => {
+                                setBetting(id);
+                                setBd({
+                                  stake: 10,
+                                  stack: "handicap",
+                                  type: "Win",
+                                  odds: x.ml ? x.ml.replace("/", "-") : "",
+                                });
+                              }}
+                              style={{ border: `1px solid ${GREEN}`, color: GREEN }}
+                              className="px-2 py-1 rounded text-xs"
+                            >
+                              + Bet
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onScratch(id)}
+                            style={{ color: out ? GREEN : "#7C7B70" }}
+                            className="text-xs"
+                          >
+                            {out ? "Undo scratch" : "Scratch"}
+                          </button>
+                          {out && myBets.length > 0 && (
+                            <span style={{ color: LOSS }} className="text-xs">
+                              You have money on this one — check the refund rule.
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1944,9 +2469,9 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
       <p style={{ color: "#7C7B70" }} className="text-xs mt-3 leading-relaxed">
         The full {DAY_LABEL[day]} card — {races.length} races,{" "}
         {races.reduce((a, r) => a + r.runners.length, 0)} runners. Morning lines
-        jockeys, workouts and the P/S/C figures are the program's, not mine;
-        Sunday has entries only until that program lands. Three horses had no
-        workout line I could match and show blank. Amber ● counts my notes in a race. Posts,
+        jockeys, workouts and the P/S/C figures are the program's, not mine.
+        All three cards are now built from the published programs. Three horses
+        on Friday and Saturday had no workout line I could match and show blank. Amber ● counts my notes in a race. Posts,
         prices and surfaces all move — the board at the gate wins any argument
         with this screen. Stars and anything you add are saved on this phone and
         ride along in Copy log.
