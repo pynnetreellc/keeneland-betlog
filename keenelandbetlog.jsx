@@ -31,6 +31,8 @@ const AMBER = "#E8B33A";
 const LOSS = "#B4483F";
 const WIN = "#5E9C6B";
 const RULE = "#C3C2B6";
+const BET = "#B5651D";
+const WHEEL = "#1F4E79";
 
 const DAYS = [
   { id: "fri", label: "Fri", date: "Oct 2" },
@@ -1481,6 +1483,59 @@ const CARD = {
   ],
 };
 
+// ---- My handicapping. `b` = one of the $10 win bets for the day; `w` = a
+// wheel: a mid-price or longshot the figures support but that I am not
+// spending the handicap stack on. Built from the program's own figures,
+// Keeneland trainer surface splits and the weather timing — not from past
+// performances, which I do not have. ----
+const PICKS = {
+  "fri-1-11": { k: "b", why: "Ties the best speed figure in the race (80) and the top class figure (112) — the same numbers the 9/2 third choice carries — at 8/1 as the 5th choice. Santamaria is 24% at the meet. Runs at 1:00 while the track is still fast." },
+  "fri-4-4": { k: "b", why: "Best speed (84) AND best class (114) in the race. Next best speed is 82 and everything else is 77 or lower. Third choice at 6/1. The cleanest figure edge on Friday." },
+  "fri-5-3": { k: "b", why: "YOUR race. Shares the top class figure (115) with both favourites, an 87 speed one point off the best, and a 100 pace figure that only Office's 108 beats. At 10/1 in a 14-horse sprint on turning ground, I would rather have him than Light Won Up at 9/2." },
+  "fri-7-1": { k: "b", why: "Phoenix. P102 S95 from post 1, on a track that will be taking water by 4:12. The pace is contested — Viking and Jack's Promise are both at 103 — so this is a 10/1 price play, not the lock I first called it." },
+  "fri-8-1": { k: "b", why: "Jessamine. Second-best class figure (114) and the second-highest pace figure (92) in the race, at 12/1 as the 7th choice. Seneca Park is the class at 9/2; this is the one chasing him at four times the price. Casse is 22% on the Keeneland turf — the good half of his split, and nobody prices it." },
+  "fri-10-7": { k: "b", why: "Highest pace figure on the entire card — 106, with the next best at 94 — plus the second-best speed figure, at 8/1 going 1 3/16 on turf in the last race of the day. Lone speed on a course five hours into the rain is how longshots win." },
+  "fri-1-7": { k: "w", why: "5/1 with a 79 speed figure, but a bottom-three pace figure. Needs the race to fall apart." },
+  "fri-1-10": { k: "w", why: "20/1 carrying the same 79/112 numbers as horses at a third the price. Barn is 0% for the meet." },
+  "fri-2-9": { k: "w", why: "8/1, 4th choice, second-best figure set in the race. Jockey at 20%." },
+  "fri-2-8": { k: "w", why: "10/1, mid-pack figures. Spread candidate only." },
+  "fri-3-3": { k: "w", why: "20/1 with the best pace figure outside the top two. A 2yo filly race with a 1/1 favourite — the race is hard, the price is not." },
+  "fri-3-1": { k: "w", why: "8/1, Danner, modest figures. Thin." },
+  "fri-4-7": { k: "w", why: "5/1 and Wilkes is 21% on this main track, but the figures are a long way behind Shewontbudge's." },
+  "fri-5-1": { k: "w", why: "10/1 and shares the 115 class figure, but an 86 pace in a 5½f sprint is the wrong shape." },
+  "fri-5-6": { k: "w", why: "30/1. An 86 speed figure is respectable for the price; nothing else recommends her." },
+  "fri-6-6": { k: "w", why: "6/1 behind an 8/5 Cox firster. Best figures of the ones that have actually run." },
+  "fri-6-5": { k: "w", why: "8/1 — but Casse is 1-for-24 on this main track. The price is the only argument." },
+  "fri-7-8": { k: "w", why: "Best raw figures in the Phoenix, S100 C121, at 4/1 — against Moquett being 0-for-13 on this main track. On numbers alone he is the best horse in the race." },
+  "fri-8-7": { k: "w", why: "12/1 and McPeek is 20% on this turf course, but a 72 pace figure is last in the field. Needs a collapse." },
+  "fri-8-11": { k: "w", why: "Highest pace figure in the Jessamine (99) at 8/1. Lone speed on softening ground is a real angle." },
+  "fri-9-4": { k: "w", why: "10/1 in a G1 against a 4/5 favourite who towers on figures. Price only." },
+  "fri-10-1": { k: "w", why: "20/1 with an 86 speed figure, no pace to go with it." },
+  "fri-10-6": { k: "w", why: "15/1, mid figures across the board. Spread only." },
+  "sat-1-3": { k: "b", why: "Best speed (80) and best class (113) figures in the race, as the 6th choice at 12/1. The most mispriced horse I can find on Saturday." },
+  "sat-3-7": { k: "b", why: "20/1 with an 86 speed figure — equal best in the race — and an 88 pace figure second only to the 3/1 favourite. The barn has almost no Keeneland record, which is why the price is what it is. That is the bet: the figures are there and the market is pricing the stable, not the horse." },
+  "sat-5-4": { k: "b", why: "A 102 speed figure where the next best is 97 and most of the field is high-80s, plus the top class figure (119). Fourth choice at 6/1 going 1 1/8 on dirt. Hard to argue with." },
+  "sat-8-10": { k: "b", why: "First Lady (G1). Best speed figure in the race (95), tied-top class (118), highest pace (98) — and she is the EIGHTH choice at 12/1. Cox is 32% on this turf course. A G1 that stays on grass whatever the weather. Best value of the weekend." },
+  "sat-10-8": { k: "b", why: "Coolmore Turf Mile (G1). Second-best speed (96) and second-best pace (101) behind only the 2/1 favourite, at 15/1 as the 6th choice in a nine-horse G1." },
+  "sat-1-6": { k: "w", why: "12/1, middling figures, no case beyond price." },
+  "sat-2-2": { k: "w", why: "8/1, second-best figures in a six-horse 2yo allowance." },
+  "sat-2-4": { k: "w", why: "5/1 with the best pace figure in the race." },
+  "sat-3-9": { k: "w", why: "5/1, ties the top class figure (115), Brendan Walsh at 16% on this turf course. The sensible version of the Winning Streep bet — take this one instead if 20/1 feels like too much of a reach." },
+  "sat-3-8": { k: "w", why: "15/1 with an 84 speed figure, but Medina is 0-for-7 on the Keeneland turf." },
+  "sat-4-4": { k: "w", why: "6/1 behind a Ward favourite who is 46% on this surface. Thin." },
+  "sat-5-1": { k: "w", why: "12/1, an 88 speed figure, but the worst pace figure in the race." },
+  "sat-5-5": { k: "w", why: "20/1 with a 96 pace figure — speed at a price in a two-turn race." },
+  "sat-6-3": { k: "w", why: "Woodford. The figures say he belongs — third-best in the race at 8/1. Ward's 2-for-32 on this turf course says do not. A wheel, not a bet, and I would not argue if you skipped him entirely." },
+  "sat-6-5": { k: "w", why: "12/1, weak pace figure, price only." },
+  "sat-7-5": { k: "w", why: "6/1 in the TCA behind a 6/5 Cox favourite. Asmussen is 15% on this main track." },
+  "sat-8-5": { k: "w", why: "10/1, Casse on turf (22%), a 92 speed figure and a 98 pace. Live if Bless The Broken is too short by post time." },
+  "sat-8-9": { k: "w", why: "10/1, the other Casse turf runner. Same argument, one point worse on speed." },
+  "sat-9-3": { k: "w", why: "12/1 in a six-horse G1. Price without much support." },
+  "sat-10-5": { k: "w", why: "8/1, Bill Mott, a 95 speed figure — one off Kupuna at half the price." },
+  "sat-10-4": { k: "w", why: "15/1, figures a shade below Kupuna's." },
+};
+
+
 // ---- My notes, attached to the runners they apply to. Everything else on
 // the card is the program's data, not my opinion. ----
 const NOTES = {
@@ -1598,6 +1653,11 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
         one race. A blank means the program has no figure, usually a
         first-time starter. <span style={{ color: GREEN }}>▲</span> marks a turf
         race. Coloured text is mine, not the program's.
+        <div style={{ marginTop: 6, color: INK }}>
+          <b style={{ color: BET }}>✻</b> is one of my six $10 win bets for the
+          day. <b style={{ color: WHEEL }}>☸</b> is a wheel — a mid-price or
+          longshot the figures like that I am not spending the stack on.
+        </div>
       </div>
 
       <input
@@ -1678,6 +1738,9 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
       {live.map(({ r, rows }) => {
         const isOpen = filtering || open[r.r];
         const flagged = r.runners.filter((x) => NOTES[nkey(x.h)]).length;
+        const pk = (x) => PICKS[day + "-" + r.r + "-" + x.n] || {};
+        const bets = r.runners.filter((x) => pk(x).k === "b").length;
+        const wheels = r.runners.filter((x) => pk(x).k === "w").length;
         return (
           <div key={r.r} className="mb-2">
             <button
@@ -1697,6 +1760,16 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
               <span style={{ color: "#7C7B70" }} className="text-xs truncate flex-1">
                 {r.name}
               </span>
+              {bets > 0 && (
+                <span style={{ color: BET }} className="text-xs">
+                  ✻{bets}
+                </span>
+              )}
+              {wheels > 0 && (
+                <span style={{ color: WHEEL }} className="text-xs">
+                  ☸{wheels}
+                </span>
+              )}
               {flagged > 0 && (
                 <span style={{ color: AMBER }} className="text-xs">
                   ●{flagged}
@@ -1720,6 +1793,7 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
             {isOpen &&
               rows.map((x) => {
                 const note = NOTES[nkey(x.h)];
+                const pick = PICKS[day + "-" + r.r + "-" + x.n];
                 const id = rid(r.r, x.n);
                 return (
                   <div
@@ -1758,6 +1832,15 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
                             ★prog
                           </span>
                         ) : null}
+                        {pick && (
+                          <span
+                            style={{ color: pick.k === "b" ? BET : WHEEL, fontWeight: 700 }}
+                            className="text-base"
+                          >
+                            {" "}
+                            {pick.k === "b" ? "✻" : "☸"}
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-2 items-center mt-1 flex-wrap">
                         {note && (
@@ -1800,6 +1883,15 @@ function Horses({ day, horses, onStar, onAdd, onDrop }) {
                       {note && (
                         <div style={{ color: GREEN }} className="text-xs mt-1">
                           {note.call}
+                        </div>
+                      )}
+                      {pick && (
+                        <div
+                          style={{ color: pick.k === "b" ? BET : WHEEL }}
+                          className="text-xs mt-1"
+                        >
+                          <b>{pick.k === "b" ? "✻ $10 win." : "☸ Wheel."}</b>{" "}
+                          {pick.why}
                         </div>
                       )}
                     </div>
