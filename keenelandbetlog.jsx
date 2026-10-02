@@ -729,6 +729,7 @@ function KeenelandBetLog() {
         </div>
       ) : view === "horses" ? (
         <Horses
+          day={day}
           horses={horses}
           onStar={toggleStar}
           onAdd={addHorse}
@@ -1103,254 +1104,434 @@ function Mark() {
   );
 }
 
-// Horses I've flagged from the charts. `day`/`race` stay null until Keeneland
-// entries are drawn, at which point these get a race and a call; anything still
-// unassigned shows under the watch list. Seeded with the Kentucky Downs
-// trouble-line shortlist — real horses, real footnotes, nothing invented.
-const HORSES = [
-  // ---- Entered Oct 2-4. Race, post and morning line verified against the
-  // published entries on Oct 1. Field sizes can still move with scratches and
-  // also-eligibles, and any turf race can come off the grass. ----
+// ---- The full card, by day and race. Friday and Saturday carry the
+// program's own PACE/SPEED/CLASS ratings and morning lines; Sunday is
+// built from the entries only (post, horse, trainer) until that program
+// lands. `p` = program handicapper's top pick. ----
+const CARD = {
+  fri: [
+    { r: 1, dist: "7f", surf: "dirt", name: "Starter Allowance, F&M 3+", post: "1:00", wager: "Pick 5 (1-5) starts", runners: [
+      { n: 1, h: "Heartbeat", ml: "10/1", jp: 11, t: "Asmussen Steven M.", tp: 16, pa: "94", sp: "75", cl: "110" },
+      { n: 2, h: "Sweet Bebsi", ml: "20/1", jp: 13, t: "Walsh Ryan D.", tp: 12, pa: "83", sp: "76", cl: "111" },
+      { n: 3, h: "Noroomformischief", ml: "9/2", jp: 10, t: "Ennis John", tp: 14, pa: "89", sp: "80", cl: "112", p: 1 },
+      { n: 4, h: "Hollybygolly", ml: "8/1", jp: 12, t: "Mott Riley", tp: 13, pa: "79", sp: "55", cl: "109" },
+      { n: 5, h: "Lady Pippa", ml: "20/1", jp: 18, t: "Medina Robert", tp: 5, pa: "92", sp: "71", cl: "110" },
+      { n: 6, h: "Our Shenanigan", ml: "6/1", jp: 9, t: "Donjuan Sergio", tp: 10, pa: "72", sp: "74", cl: "112" },
+      { n: 7, h: "Modern Sound", ml: "5/1", jp: 14, t: "Radosevich Shelly R.", tp: 13, pa: "75", sp: "79", cl: "112" },
+      { n: 8, h: "Queen Of Queens", ml: "3/1", jp: 22, t: "Sharp Joe", tp: 19, pa: "92", sp: "79", cl: "112" },
+      { n: 9, h: "Epic Prankster", ml: "12/1", jp: 22, t: "Watkins James M.", tp: 19, pa: "92", sp: "73", cl: "109" },
+      { n: 10, h: "Mom's Cheesecake", ml: "20/1", jp: 13, t: "Pierce Lacy", tp: 0, pa: "86", sp: "79", cl: "112" },
+      { n: 11, h: "Belle Ofthe Dance", ml: "8/1", jp: 11, t: "Santamaria Carlos", tp: 24, pa: "88", sp: "80", cl: "112" },
+    ] },
+    { r: 2, dist: "1 1/16m", surf: "dirt", name: "Claiming $16,000, 3+", post: "1:32", wager: "Pick 4 (2-5)", runners: [
+      { n: 1, h: "National Eclipse", ml: "5/2", jp: 22, t: "Kenneally Eddie", tp: 15, pa: "95", sp: "82", cl: "113", p: 1 },
+      { n: 2, h: "Raising Kane", ml: "10/1", jp: 7, t: "Moreno-Barban Leandro", tp: 14, pa: "86", sp: "75", cl: "111" },
+      { n: 3, h: "Jus Too Fly", ml: "20/1", jp: 14, t: "Decker Anna", tp: 22, pa: "70", sp: "75", cl: "112" },
+      { n: 4, h: "Mena", ml: "4/1", jp: 22, t: "Moquett Ron", tp: 13, pa: "84", sp: "85", cl: "112" },
+      { n: 5, h: "Vino Couragio", ml: "20/1", jp: 17, t: "Campbell Joel", tp: 12, pa: "77", sp: "75", cl: "112" },
+      { n: 6, h: "Professor Higgins", ml: "10/1", jp: 13, t: "Holsapple Hutch", tp: 14, pa: "88", sp: "78", cl: "111" },
+      { n: 7, h: "Manfredi", ml: "3/1", jp: 16, t: "Casse Norm W.", tp: 17, pa: "88", sp: "71", cl: "111" },
+      { n: 8, h: "Special Justice", ml: "10/1", jp: 10, t: "Molloy Thomas", tp: 17, pa: "83", sp: "78", cl: "112" },
+      { n: 9, h: "Stolen Power", ml: "8/1", jp: 20, t: "Williams Colby", tp: 12, pa: "78", sp: "82", cl: "112" },
+      { n: 10, h: "Contrary Chieftain", ml: "15/1", jp: 14, t: "Shorter Aaron", tp: 8, pa: "85", sp: "47", cl: "106" },
+    ] },
+    { r: 3, dist: "6f", surf: "dirt", name: "Allowance, 2yo fillies", post: "2:04", wager: "", runners: [
+      { n: 1, h: "Sharpie Girl", ml: "8/1", jp: 5, t: "Danner Kelsey", tp: 12, pa: "92", sp: "75", cl: "113" },
+      { n: 2, h: "Seaside Startup", ml: "7/2", jp: 24, t: "Brown Chad C.", tp: 22, pa: "94", sp: "81", cl: "114" },
+      { n: 3, h: "Velvet Beretta", ml: "20/1", jp: 18, t: "Douaihy Michel", tp: 10, pa: "96", sp: "77", cl: "112" },
+      { n: 4, h: "Master Queen", ml: "10/1", jp: 3, t: "Munoz Carlos", tp: 10, pa: "83", sp: "72", cl: "111" },
+      { n: 5, h: "Chickies Perch", ml: "8/1", jp: 11, t: "Weaver George", tp: 16, pa: "90", sp: "71", cl: "108" },
+      { n: 6, h: "Washton", ml: "4/1", jp: 22, t: "Asmussen Steven M.", tp: 16, pa: "84", sp: "71", cl: "112" },
+      { n: 7, h: "Virabhadrasana", ml: "1/1", jp: 24, t: "LaRose Kinnon", tp: 13, pa: "92", sp: "82", cl: "113", p: 1 },
+    ] },
+    { r: 4, dist: "7f", surf: "dirt", name: "Maiden Special Weight, F&M 3+", post: "2:36", wager: "", runners: [
+      { n: 1, h: "Pretty In A Dress", ml: "6/1", jp: 14, t: "Walsh Brendan P.", tp: 16, pa: "86", sp: "77", cl: "109" },
+      { n: 2, h: "Hathaway", ml: "20/1", jp: 18, t: "Douaihy Michel", tp: 10, pa: "—", sp: "—", cl: "—" },
+      { n: 3, h: "Cartier Gold", ml: "12/1", jp: 16, t: "Servis John C.", tp: 14, pa: "71", sp: "74", cl: "110" },
+      { n: 4, h: "Shewontbudge", ml: "6/1", jp: 21, t: "Spicer James T.", tp: 11, pa: "84", sp: "84", cl: "114" },
+      { n: 5, h: "Fast Gun", ml: "4/1", jp: 22, t: "Asmussen Steven M.", tp: 16, pa: "81", sp: "82", cl: "112", p: 1 },
+      { n: 6, h: "Touch Of An Angel", ml: "10/1", jp: 12, t: "D'Amato Philip", tp: 18, pa: "82", sp: "70", cl: "110" },
+      { n: 7, h: "Rules And Regs", ml: "5/1", jp: 12, t: "Wilkes Ian R.", tp: 13, pa: "75", sp: "74", cl: "112" },
+      { n: 8, h: "Maxfield's Dream", ml: "50/1", jp: 17, t: "Pompell Robert", tp: 9, pa: "86", sp: "66", cl: "107" },
+      { n: 9, h: "Parisinthespring", ml: "15/1", jp: 16, t: "Oliver Victoria H.", tp: 12, pa: "80", sp: "74", cl: "110" },
+      { n: 10, h: "Crawford", ml: "20/1", jp: 22, t: "Delacour Arnaud", tp: 22, pa: "85", sp: "74", cl: "110" },
+      { n: 11, h: "Cognition", ml: "8/1", jp: 24, t: "Brown Chad C.", tp: 22, pa: "88", sp: "73", cl: "109" },
+      { n: 12, h: "Staged", ml: "9/2", jp: 24, t: "Mott William I.", tp: 16, pa: "—", sp: "—", cl: "—" },
+    ] },
+    { r: 5, dist: "5½f", surf: "turf", name: "Allowance, 3yo fillies", post: "3:08", wager: "Pick 6 (5-10) · Turf Pick 3 (5,8,10)", runners: [
+      { n: 1, h: "Quiet Street", ml: "10/1", jp: 24, t: "Mott William I.", tp: 16, pa: "86", sp: "86", cl: "115" },
+      { n: 2, h: "La Puma", ml: "8/1", jp: 11, t: "Hernandez Rey", tp: 18, pa: "100", sp: "87", cl: "113" },
+      { n: 3, h: "Gerrards Cross", ml: "10/1", jp: 18, t: "O'Connell Kathleen", tp: 19, pa: "100", sp: "87", cl: "115" },
+      { n: 4, h: "Should've", ml: "12/1", jp: 22, t: "Ward Wesley A.", tp: 25, pa: "95", sp: "87", cl: "114" },
+      { n: 5, h: "Alpenglow", ml: "30/1", jp: 14, t: "D'Angelo Jose Francisco", tp: 14, pa: "97", sp: "79", cl: "112" },
+      { n: 6, h: "Rocket Rania", ml: "30/1", jp: 11, t: "Matejka Pavel", tp: 13, pa: "90", sp: "86", cl: "114" },
+      { n: 7, h: "Now Or Nevermore", ml: "12/1", jp: 13, t: "Banks Chris", tp: 17, pa: "93", sp: "76", cl: "111" },
+      { n: 8, h: "Pillar Of Beauty", ml: "8/1", jp: 16, t: "Mott William I.", tp: 16, pa: "94", sp: "84", cl: "114" },
+      { n: 9, h: "Triskelion", ml: "12/1", jp: 16, t: "Arnold, II G. R.", tp: 15, pa: "98", sp: "85", cl: "113" },
+      { n: 10, h: "Light Won Up", ml: "9/2", jp: 22, t: "O'Neill Doug", tp: 16, pa: "96", sp: "88", cl: "115", p: 1 },
+      { n: 11, h: "Cadenza", ml: "7/2", jp: 24, t: "Cox Brad H.", tp: 25, pa: "94", sp: "86", cl: "115" },
+      { n: 12, h: "Laigina", ml: "5/1", jp: 11, t: "Biancone Patrick L.", tp: 16, pa: "86", sp: "85", cl: "115" },
+      { n: 13, h: "Office", ml: "10/1", jp: 16, t: "Beckman D. Whitworth", tp: 15, pa: "108", sp: "80", cl: "112" },
+      { n: 14, h: "Storm Cloud Rising", ml: "20/1", jp: 22, t: "Cambray Andres", tp: 4, pa: "92", sp: "86", cl: "112" },
+    ] },
+    { r: 6, dist: "6f", surf: "dirt", name: "Maiden Special Weight, 2yo", post: "3:40", wager: "Pick 5 (6-10)", runners: [
+      { n: 1, h: "Super Saiyajin", ml: "30/1", jp: 9, t: "Donjuan Sergio", tp: 10, pa: "90", sp: "58", cl: "107" },
+      { n: 2, h: "General Jack", ml: "6/1", jp: 24, t: "Walsh Brendan P.", tp: 16, pa: "—", sp: "—", cl: "—" },
+      { n: 3, h: "Kingside", ml: "7/2", jp: 14, t: "Walsh Brendan P.", tp: 16, pa: "—", sp: "—", cl: "—" },
+      { n: 4, h: "Saltwater Soul", ml: "12/1", jp: 11, t: "Mott Riley", tp: 13, pa: "—", sp: "—", cl: "—" },
+      { n: 5, h: "Overtime Bonus", ml: "8/1", jp: 22, t: "Casse Mark E.", tp: 16, pa: "92", sp: "72", cl: "110" },
+      { n: 6, h: "T V Time Out", ml: "6/1", jp: 16, t: "Asmussen Steven M.", tp: 16, pa: "92", sp: "79", cl: "111" },
+      { n: 7, h: "Redmoor", ml: "15/1", jp: 14, t: "Diodoro Robertino", tp: 25, pa: "—", sp: "—", cl: "—" },
+      { n: 8, h: "National Forest", ml: "8/5", jp: 24, t: "Cox Brad H.", tp: 25, pa: "95", sp: "83", cl: "116", p: 1 },
+      { n: 9, h: "Knicks Diamonds", ml: "15/1", jp: 18, t: "Sims Matthew P.", tp: 12, pa: "—", sp: "—", cl: "—" },
+      { n: 10, h: "Drain The Bourbon", ml: "20/1", jp: 12, t: "Wilkes Ian R.", tp: 13, pa: "—", sp: "—", cl: "—" },
+    ] },
+    { r: 7, dist: "6f", surf: "dirt", name: "Stoll Keenon Ogden Phoenix (G2)", post: "4:12", wager: "Pick 4 (7-10)", runners: [
+      { n: 1, h: "Mad House", ml: "10/1", jp: 14, t: "VanWinkle David", tp: 5, pa: "102", sp: "95", cl: "118" },
+      { n: 2, h: "Booth", ml: "6/1", jp: 22, t: "Asmussen Steven M.", tp: 16, pa: "98", sp: "80", cl: "115" },
+      { n: 3, h: "Little Thunder", ml: "15/1", jp: 16, t: "Hamm Timothy E.", tp: 16, pa: "98", sp: "94", cl: "116" },
+      { n: 4, h: "Verifire", ml: "5/2", jp: 24, t: "Cox Brad H.", tp: 25, pa: "101", sp: "97", cl: "119", p: 1 },
+      { n: 5, h: "Classic Of Course", ml: "20/1", jp: 16, t: "Biancone Patrick L.", tp: 16, pa: "90", sp: "90", cl: "117" },
+      { n: 6, h: "Viking", ml: "8/1", jp: 14, t: "Fawkes David", tp: 20, pa: "103", sp: "90", cl: "117" },
+      { n: 7, h: "C K Wonder", ml: "30/1", jp: 13, t: "Romans Dale L.", tp: 11, pa: "93", sp: "91", cl: "117" },
+      { n: 8, h: "Hymn", ml: "4/1", jp: 15, t: "Moquett Ron", tp: 13, pa: "97", sp: "100", cl: "121" },
+      { n: 9, h: "Jack's Promise", ml: "30/1", jp: 12, t: "Romans Dale L.", tp: 11, pa: "103", sp: "92", cl: "118" },
+      { n: 10, h: "Nakatomi", ml: "7/2", jp: 24, t: "Ward Wesley A.", tp: 25, pa: "93", sp: "94", cl: "117" },
+      { n: 11, h: "Here Mi Song", ml: "15/1", jp: 9, t: "Stinson, Jr. William", tp: 0, pa: "95", sp: "93", cl: "117" },
+    ] },
+    { r: 8, dist: "1 1/16m", surf: "turf", name: "Jessamine (G2)", post: "4:44", wager: "Late Pick 3 (8-10)", runners: [
+      { n: 1, h: "Pros And Cons", ml: "12/1", jp: 22, t: "Casse Mark E.", tp: 16, pa: "92", sp: "80", cl: "114" },
+      { n: 2, h: "Mel Went Home", ml: "15/1", jp: 14, t: "Medina Robert", tp: 5, pa: "78", sp: "75", cl: "113" },
+      { n: 3, h: "Monique En Vol", ml: "4/1", jp: 24, t: "Cox Brad H.", tp: 25, pa: "75", sp: "81", cl: "108" },
+      { n: 4, h: "Beautiful Harper", ml: "15/1", jp: 14, t: "DeVaux Cherie", tp: 17, pa: "80", sp: "74", cl: "110" },
+      { n: 5, h: "Seneca Park", ml: "9/2", jp: 12, t: "Stewart Dallas", tp: 21, pa: "93", sp: "86", cl: "115", p: 1 },
+      { n: 6, h: "Glycogen", ml: "8/1", jp: 16, t: "Servis John C.", tp: 14, pa: "77", sp: "73", cl: "114" },
+      { n: 7, h: "Golden Maiden", ml: "12/1", jp: 15, t: "McPeek Kenneth G.", tp: 16, pa: "72", sp: "79", cl: "113" },
+      { n: 8, h: "Lucky Bernadine", ml: "9/2", jp: 24, t: "Cox Brad H.", tp: 25, pa: "76", sp: "73", cl: "110" },
+      { n: 9, h: "Quibbler", ml: "15/1", jp: 11, t: "Mott Riley", tp: 13, pa: "74", sp: "72", cl: "112" },
+      { n: 10, h: "Serenas Ghost", ml: "10/1", jp: 16, t: "Sharp Joe", tp: 19, pa: "66", sp: "68", cl: "106" },
+      { n: 11, h: "Elegante Miz", ml: "8/1", jp: 11, t: "Biancone Patrick L.", tp: 16, pa: "99", sp: "79", cl: "114" },
+      { n: 12, h: "Mightily", ml: "15/1", jp: 13, t: "O'Dwyer Jeremiah", tp: 17, pa: "65", sp: "74", cl: "111" },
+    ] },
+    { r: 9, dist: "1 1/16m", surf: "dirt", name: "Darley Alcibiades (G1)", post: "5:16", wager: "", runners: [
+      { n: 1, h: "Emphatic", ml: "4/1", jp: 14, t: "Walsh Brendan P.", tp: 16, pa: "84", sp: "83", cl: "116" },
+      { n: 2, h: "For The Money", ml: "30/1", jp: 15, t: "Crichton Rohan G.", tp: 19, pa: "90", sp: "76", cl: "111" },
+      { n: 3, h: "Ever Forward", ml: "20/1", jp: 12, t: "Walsh Brendan P.", tp: 16, pa: "92", sp: "81", cl: "114" },
+      { n: 4, h: "Oh She Said Yes", ml: "10/1", jp: 17, t: "McPeek Kenneth G.", tp: 16, pa: "91", sp: "84", cl: "116" },
+      { n: 5, h: "Summer Starlet", ml: "4/5", jp: 24, t: "Asmussen Steven M.", tp: 16, pa: "89", sp: "95", cl: "120", p: 1 },
+      { n: 6, h: "Forever Carina", ml: "9/2", jp: 22, t: "Brown Chad C.", tp: 22, pa: "74", sp: "84", cl: "115" },
+      { n: 7, h: "High Speed Reed", ml: "8/1", jp: 16, t: "Casse Mark E.", tp: 16, pa: "82", sp: "79", cl: "115" },
+      { n: 8, h: "Elewene", ml: "15/1", jp: 16, t: "Romans Dale L.", tp: 11, pa: "94", sp: "83", cl: "117" },
+    ] },
+    { r: 10, dist: "1 3/16m", surf: "turf", name: "Allowance, 3+", post: "5:48", wager: "Super High Five", runners: [
+      { n: 1, h: "Chillax", ml: "20/1", jp: 15, t: "Jacobson David", tp: 14, pa: "88", sp: "86", cl: "113" },
+      { n: 2, h: "Highly Connected", ml: "15/1", jp: 18, t: "Williams Matt", tp: 11, pa: "84", sp: "87", cl: "112" },
+      { n: 3, h: "Quiet Mischief", ml: "30/1", jp: 11, t: "McKeever Andrew", tp: 12, pa: "89", sp: "75", cl: "110" },
+      { n: 4, h: "Lahainaluna", ml: "12/1", jp: 16, t: "Sharp Joe", tp: 19, pa: "78", sp: "86", cl: "112" },
+      { n: 5, h: "Timestream", ml: "30/1", jp: 22, t: "Molloy Thomas", tp: 17, pa: "80", sp: "77", cl: "111" },
+      { n: 6, h: "Michael's Cove", ml: "15/1", jp: 12, t: "Newton Troy", tp: 13, pa: "85", sp: "85", cl: "113" },
+      { n: 7, h: "My Boy Tony", ml: "8/1", jp: 14, t: "Kenneally Eddie", tp: 15, pa: "106", sp: "89", cl: "114" },
+      { n: 8, h: "Kravitz", ml: "10/1", jp: 16, t: "Motion H. Graham", tp: 17, pa: "84", sp: "83", cl: "113" },
+      { n: 9, h: "Lazlo", ml: "5/1", jp: 24, t: "Maker Michael J.", tp: 18, pa: "86", sp: "84", cl: "113" },
+      { n: 10, h: "Caragogo", ml: "6/1", jp: 9, t: "Arnold, II G. R.", tp: 15, pa: "92", sp: "81", cl: "112" },
+      { n: 11, h: "Doctrine", ml: "4/1", jp: 24, t: "Cox Brad H.", tp: 25, pa: "85", sp: "91", cl: "114", p: 1 },
+      { n: 12, h: "The Brigade", ml: "3/1", jp: 22, t: "Casse Mark E.", tp: 16, pa: "94", sp: "88", cl: "115" },
+      { n: 13, h: "Shure", ml: "15/1", jp: 10, t: "Corrigan Jimmy", tp: 13, pa: "84", sp: "81", cl: "113" },
+      { n: 14, h: "Ramblin", ml: "30/1", jp: 11, t: "Lobo Paulo H.", tp: 16, pa: "75", sp: "74", cl: "110" },
+    ] },
+  ],
+  sat: [
+    { r: 1, dist: "7f", surf: "dirt", name: "Maiden Special Weight, 3+", post: "1:00", wager: "Pick 5 (1-5) starts", runners: [
+      { n: 1, h: "Ur A Collection", ml: "8/1", jp: 11, t: "Schultz Lindsay", tp: 13, pa: "98", sp: "72", cl: "108" },
+      { n: 2, h: "Commentate", ml: "3/1", jp: 22, t: "DeVaux Cherie", tp: 17, pa: "57", sp: "78", cl: "110" },
+      { n: 3, h: "Summit Ridge", ml: "12/1", jp: 9, t: "Sweezey J. Kent", tp: 13, pa: "88", sp: "80", cl: "113" },
+      { n: 4, h: "Dream Machine", ml: "9/5", jp: 24, t: "Brown Chad C.", tp: 22, pa: "89", sp: "63", cl: "109", p: 1 },
+      { n: 5, h: "Alworth", ml: "9/2", jp: 16, t: "Davis Christopher", tp: 11, pa: "86", sp: "75", cl: "110" },
+      { n: 6, h: "Noble Anthem", ml: "12/1", jp: 16, t: "Oliver Victoria H.", tp: 12, pa: "83", sp: "71", cl: "110" },
+      { n: 7, h: "Mayfield", ml: "6/1", jp: 14, t: "Walsh Brendan P.", tp: 16, pa: "86", sp: "68", cl: "107" },
+      { n: 8, h: "Unlimited", ml: "10/1", jp: 14, t: "Mott Riley", tp: 13, pa: "—", sp: "—", cl: "—" },
+    ] },
+    { r: 2, dist: "6f", surf: "dirt", name: "Allowance, 2yo", post: "1:32", wager: "Pick 4 (2-5)", runners: [
+      { n: 1, h: "Chancery", ml: "8/5", jp: 12, t: "Arnold II G. R.", tp: 15, pa: "93", sp: "85", cl: "114", p: 1 },
+      { n: 2, h: "Game Sayayin", ml: "8/1", jp: 16, t: "Delgado Jose H.", tp: 7, pa: "—", sp: "83", cl: "112" },
+      { n: 3, h: "Never A Doubt", ml: "6/1", jp: 14, t: "David Carlos A.", tp: 20, pa: "92", sp: "78", cl: "113" },
+      { n: 4, h: "Never Sleep", ml: "5/1", jp: 17, t: "Rivelli Larry", tp: 27, pa: "107", sp: "80", cl: "112" },
+      { n: 5, h: "Dormie", ml: "4/1", jp: 16, t: "Block Chris M.", tp: 18, pa: "92", sp: "76", cl: "113" },
+      { n: 6, h: "Maker Of Mischief", ml: "3/1", jp: 22, t: "West Ethan W.", tp: 13, pa: "84", sp: "70", cl: "104" },
+    ] },
+    { r: 3, dist: "1 3/16m", surf: "turf", name: "Allowance, F&M 3+", post: "2:04", wager: "", runners: [
+      { n: 1, h: "Marcinkowski", ml: "8/1", jp: 16, t: "Oliver Victoria H.", tp: 12, pa: "80", sp: "79", cl: "112" },
+      { n: 2, h: "Temple Goddess", ml: "30/1", jp: 10, t: "Corrigan Jimmy", tp: 13, pa: "82", sp: "78", cl: "112" },
+      { n: 3, h: "Market Chill", ml: "8/1", jp: 24, t: "Brown Chad C.", tp: 22, pa: "81", sp: "81", cl: "112" },
+      { n: 4, h: "Paseo", ml: "10/1", jp: 12, t: "Wilkes Ian R.", tp: 13, pa: "77", sp: "81", cl: "114" },
+      { n: 5, h: "Episist", ml: "6/1", jp: 22, t: "Asmussen Steven M.", tp: 16, pa: "79", sp: "83", cl: "113" },
+      { n: 6, h: "Miss Pharaoh", ml: "12/1", jp: 11, t: "Sims Matthew P.", tp: 12, pa: "79", sp: "80", cl: "113" },
+      { n: 7, h: "Winning Streep", ml: "20/1", jp: 15, t: "Servis John C.", tp: 14, pa: "88", sp: "86", cl: "113" },
+      { n: 8, h: "Classic Glide", ml: "15/1", jp: 14, t: "Medina Robert", tp: 5, pa: "83", sp: "84", cl: "114" },
+      { n: 9, h: "Charm Of Venice", ml: "5/1", jp: 14, t: "Walsh Brendan P.", tp: 16, pa: "80", sp: "84", cl: "115" },
+      { n: 10, h: "Siouxse", ml: "9/2", jp: 16, t: "Motion H. Graham", tp: 17, pa: "77", sp: "82", cl: "113" },
+      { n: 11, h: "Tulip", ml: "3/1", jp: 14, t: "Walden William", tp: 25, pa: "96", sp: "86", cl: "115", p: 1 },
+    ] },
+    { r: 4, dist: "6½f", surf: "dirt", name: "Allowance Opt Clm $100k, 3+", post: "2:36", wager: "", runners: [
+      { n: 1, h: "Autodrive", ml: "9/2", jp: 12, t: "Calhoun W. Bret", tp: 19, pa: "92", sp: "88", cl: "115" },
+      { n: 2, h: "Floodlites", ml: "7/5", jp: 16, t: "Ward Wesley A.", tp: 26, pa: "99", sp: "92", cl: "117", p: 1 },
+      { n: 3, h: "C K Wonder", ml: "5/2", jp: 22, t: "Romans Dale L.", tp: 11, pa: "93", sp: "91", cl: "117" },
+      { n: 4, h: "Durante", ml: "6/1", jp: 24, t: "Jacobson David", tp: 14, pa: "93", sp: "80", cl: "114" },
+      { n: 5, h: "Touch Of Destiny", ml: "30/1", jp: 10, t: "Aranha Jose L.", tp: 11, pa: "89", sp: "64", cl: "111" },
+      { n: 6, h: "Lips Say Bliss", ml: "7/2", jp: 14, t: "Medina Robert", tp: 5, pa: "85", sp: "89", cl: "116" },
+    ] },
+    { r: 5, dist: "1 1/8m", surf: "dirt", name: "Allowance Opt Clm $80k, 3+", post: "3:08", wager: "Pick 6 (5-10)", runners: [
+      { n: 1, h: "Urban Planner", ml: "12/1", jp: 14, t: "Jacobson David", tp: 14, pa: "78", sp: "88", cl: "117" },
+      { n: 2, h: "Render Judgment", ml: "7/2", jp: 22, t: "McPeek Kenneth G.", tp: 16, pa: "83", sp: "91", cl: "117" },
+      { n: 3, h: "First Resort", ml: "8/1", jp: 16, t: "Harty Eoin G.", tp: 11, pa: "86", sp: "85", cl: "115" },
+      { n: 4, h: "Stowaway", ml: "6/1", jp: 17, t: "Beckman D. Whitworth", tp: 15, pa: "89", sp: "102", cl: "119" },
+      { n: 5, h: "Groveland", ml: "20/1", jp: 18, t: "Kenneally Eddie", tp: 15, pa: "96", sp: "90", cl: "116" },
+      { n: 6, h: "Copper Missile", ml: "20/1", jp: 15, t: "Sims Matthew P.", tp: 12, pa: "76", sp: "83", cl: "112" },
+      { n: 7, h: "Archie The Giza", ml: "10/1", jp: 14, t: "Medina Robert", tp: 5, pa: "85", sp: "82", cl: "114" },
+      { n: 8, h: "Can't Hush This", ml: "30/1", jp: 15, t: "West Ethan W.", tp: 13, pa: "95", sp: "87", cl: "115" },
+      { n: 9, h: "Bullard", ml: "5/2", jp: 24, t: "McCarthy Michael W.", tp: 13, pa: "90", sp: "91", cl: "117" },
+      { n: 10, h: "Who Dey", ml: "4/1", jp: 12, t: "Drury, Jr. Thomas", tp: 12, pa: "82", sp: "97", cl: "118", p: 1 },
+    ] },
+    { r: 6, dist: "5½f", surf: "turf", name: "Woodford (G2)", post: "3:40", wager: "Pick 5 (6-10) · Turf Pick 3 (6,8,10)", runners: [
+      { n: 1, h: "Script", ml: "20/1", jp: 16, t: "Arnold II G. R.", tp: 15, pa: "92", sp: "86", cl: "115" },
+      { n: 2, h: "Mondogetsbuckets", ml: "15/1", jp: 15, t: "Block Chris M.", tp: 18, pa: "94", sp: "86", cl: "116" },
+      { n: 3, h: "No Nay Hudson", ml: "8/1", jp: 22, t: "Ward Wesley A.", tp: 26, pa: "—", sp: "92", cl: "117" },
+      { n: 4, h: "Nobals", ml: "15/1", jp: 9, t: "Rivelli Larry", tp: 27, pa: "99", sp: "87", cl: "115" },
+      { n: 5, h: "Okiro", ml: "12/1", jp: 14, t: "Garoffalo Jose", tp: 13, pa: "88", sp: "87", cl: "116" },
+      { n: 6, h: "Joe Shiesty", ml: "5/2", jp: 16, t: "Foster Eric N.", tp: 13, pa: "101", sp: "93", cl: "117", p: 1 },
+      { n: 7, h: "Motorious", ml: "4/1", jp: 21, t: "D'Amato Philip", tp: 18, pa: "—", sp: "89", cl: "117" },
+      { n: 8, h: "My Boy Prince", ml: "5/1", jp: 16, t: "Casse Mark E.", tp: 16, pa: "92", sp: "87", cl: "116" },
+      { n: 9, h: "Its Bourbon Thirty", ml: "20/1", jp: 13, t: "O'Dwyer Jeremiah", tp: 17, pa: "96", sp: "81", cl: "114" },
+      { n: 10, h: "Doncho", ml: "7/2", jp: 24, t: "Lovell Michelle", tp: 17, pa: "104", sp: "94", cl: "117" },
+    ] },
+    { r: 7, dist: "6½f", surf: "dirt", name: "Thoroughbred Club of America (G2)", post: "4:12", wager: "Pick 4 (7-10)", runners: [
+      { n: 1, h: "Praying", ml: "12/1", jp: 16, t: "Medina Robert", tp: 5, pa: "94", sp: "79", cl: "114" },
+      { n: 2, h: "Jersey Pearl", ml: "15/1", jp: 18, t: "Miller Darrin", tp: 11, pa: "94", sp: "87", cl: "117" },
+      { n: 3, h: "Queen's Martini", ml: "30/1", jp: 14, t: "Moquett Ron", tp: 13, pa: "94", sp: "87", cl: "117" },
+      { n: 4, h: "Evanescence", ml: "4/1", jp: 22, t: "Kenneally Eddie", tp: 15, pa: "90", sp: "95", cl: "119" },
+      { n: 5, h: "Zeitlos", ml: "6/1", jp: 12, t: "Asmussen Steven M.", tp: 16, pa: "98", sp: "92", cl: "117" },
+      { n: 6, h: "Eclatant", ml: "6/5", jp: 24, t: "Cox Brad H.", tp: 25, pa: "98", sp: "90", cl: "120", p: 1 },
+      { n: 7, h: "Echo Sound", ml: "5/2", jp: 16, t: "Arnold II G. R.", tp: 15, pa: "102", sp: "88", cl: "118" },
+    ] },
+    { r: 8, dist: "1m", surf: "turf", name: "First Lady (G1)", post: "4:44", wager: "Pick 4 (8-11)", runners: [
+      { n: 1, h: "Pin Up Betty", ml: "20/1", jp: 14, t: "Maker Michael J.", tp: 18, pa: "91", sp: "91", cl: "116" },
+      { n: 2, h: "Lush Lips", ml: "8/1", jp: 14, t: "Walsh Brendan P.", tp: 16, pa: "92", sp: "88", cl: "116" },
+      { n: 3, h: "Mandanaba", ml: "7/2", jp: 21, t: "Graffard Francis - Henri", tp: 0, pa: "98", sp: "94", cl: "118", p: 1 },
+      { n: 4, h: "Expensive Queen", ml: "9/2", jp: 16, t: "Walsh Brendan P.", tp: 16, pa: "94", sp: "92", cl: "118" },
+      { n: 5, h: "And One More Time", ml: "10/1", jp: 15, t: "Casse Mark E.", tp: 16, pa: "98", sp: "92", cl: "118" },
+      { n: 6, h: "Deep Satin", ml: "8/1", jp: 22, t: "DeVaux Cherie", tp: 17, pa: "91", sp: "91", cl: "117" },
+      { n: 7, h: "Love You Anyway", ml: "30/1", jp: 12, t: "Arnold II G. R.", tp: 15, pa: "86", sp: "77", cl: "114" },
+      { n: 8, h: "Segesta", ml: "3/1", jp: 24, t: "Brown Chad C.", tp: 22, pa: "96", sp: "94", cl: "118" },
+      { n: 9, h: "Classic Q", ml: "10/1", jp: 16, t: "Casse Mark E.", tp: 16, pa: "98", sp: "91", cl: "118" },
+      { n: 10, h: "Bless The Broken", ml: "12/1", jp: 12, t: "Cox Brad H.", tp: 25, pa: "98", sp: "95", cl: "118" },
+      { n: 11, h: "Vina Arana", ml: "20/1", jp: 5, t: "Sisterson Jack", tp: 20, pa: "100", sp: "92", cl: "117" },
+    ] },
+    { r: 9, dist: "1 1/16m", surf: "dirt", name: "Claiborne Breeders' Futurity (G1)", post: "5:16", wager: "Late Pick 3 (9-11)", runners: [
+      { n: 1, h: "Coach Pope", ml: "4/5", jp: 22, t: "McPeek Kenneth G.", tp: 16, pa: "93", sp: "94", cl: "117", p: 1 },
+      { n: 2, h: "Q B Rocket", ml: "2/1", jp: 14, t: "Cox Brad H.", tp: 25, pa: "98", sp: "95", cl: "117" },
+      { n: 3, h: "Phone Booth", ml: "12/1", jp: 21, t: "O'Neill Doug", tp: 16, pa: "88", sp: "87", cl: "116" },
+      { n: 4, h: "Title Worthy", ml: "20/1", jp: 9, t: "Stewart Dallas", tp: 21, pa: "95", sp: "75", cl: "115" },
+      { n: 5, h: "Jaded", ml: "15/1", jp: 24, t: "Casse Mark E.", tp: 16, pa: "77", sp: "79", cl: "109" },
+      { n: 6, h: "American History", ml: "4/1", jp: 16, t: "Pletcher Todd A.", tp: 16, pa: "79", sp: "83", cl: "116" },
+    ] },
+    { r: 10, dist: "1m", surf: "turf", name: "Coolmore Turf Mile (G1)", post: "5:48", wager: "", runners: [
+      { n: 1, h: "Title Role", ml: "12/1", jp: 16, t: "Walsh Brendan P.", tp: 16, pa: "88", sp: "90", cl: "116" },
+      { n: 2, h: "Brilliant Berti", ml: "6/1", jp: 12, t: "DeVaux Cherie", tp: 17, pa: "92", sp: "93", cl: "119" },
+      { n: 3, h: "Rhetorical", ml: "2/1", jp: 24, t: "Walden William", tp: 25, pa: "104", sp: "97", cl: "119" },
+      { n: 4, h: "Mercante", ml: "15/1", jp: 21, t: "Knippenberg Brian", tp: 11, pa: "96", sp: "94", cl: "117" },
+      { n: 5, h: "Pass The Hat", ml: "8/1", jp: 14, t: "Mott William I.", tp: 16, pa: "96", sp: "95", cl: "118" },
+      { n: 6, h: "Plensa", ml: "30/1", jp: 12, t: "Arnold II G. R.", tp: 15, pa: "92", sp: "90", cl: "116" },
+      { n: 7, h: "Lake Forest", ml: "4/1", jp: 0, t: "Haggas William J.", tp: 0, pa: "—", sp: "—", cl: "121", p: 1 },
+      { n: 8, h: "Kupuna", ml: "15/1", jp: 14, t: "Casse Norm W.", tp: 17, pa: "101", sp: "96", cl: "118" },
+      { n: 9, h: "Zulu Kingdom", ml: "3/1", jp: 22, t: "Brown Chad C.", tp: 22, pa: "94", sp: "93", cl: "118" },
+    ] },
+    { r: 11, dist: "6f", surf: "dirt", name: "Maiden Special Weight, 2yo fillies", post: "6:20", wager: "Super High Five", runners: [
+      { n: 1, h: "Niosa", ml: "5/1", jp: 14, t: "D'Amato Philip", tp: 18, pa: "—", sp: "—", cl: "—" },
+      { n: 2, h: "Right In Time", ml: "9/2", jp: 14, t: "Mott Riley", tp: 13, pa: "—", sp: "—", cl: "—" },
+      { n: 3, h: "Rock Your Dreams", ml: "3/1", jp: 15, t: "McPeek Kenneth G.", tp: 16, pa: "—", sp: "—", cl: "—" },
+      { n: 4, h: "Ronna's Sizzler", ml: "20/1", jp: 11, t: "Moquett Ron", tp: 13, pa: "—", sp: "—", cl: "—" },
+      { n: 5, h: "Stars In My Eyes", ml: "12/1", jp: 22, t: "Calhoun W. Bret", tp: 19, pa: "—", sp: "—", cl: "—" },
+      { n: 6, h: "Neuromap", ml: "20/1", jp: 13, t: "Colebrook Ben", tp: 10, pa: "—", sp: "—", cl: "—" },
+      { n: 7, h: "Pastya", ml: "6/1", jp: 16, t: "Arnold II G. R.", tp: 15, pa: "—", sp: "—", cl: "—" },
+      { n: 8, h: "Liam's Lucky Lass", ml: "20/1", jp: 9, t: "Wilkes Ian R.", tp: 13, pa: "—", sp: "—", cl: "—" },
+      { n: 9, h: "Clock", ml: "12/1", jp: 16, t: "Pletcher Todd A.", tp: 16, pa: "96", sp: "75", cl: "111", p: 1 },
+      { n: 10, h: "Rapagna", ml: "8/1", jp: 12, t: "Walden William", tp: 25, pa: "—", sp: "—", cl: "—" },
+      { n: 11, h: "Life On Marz", ml: "12/1", jp: 12, t: "Wilkes Ian R.", tp: 13, pa: "—", sp: "—", cl: "—" },
+      { n: 12, h: "Nu Why Me", ml: "20/1", jp: 18, t: "DiVito James P.", tp: 13, pa: "86", sp: "70", cl: "109" },
+      { n: 13, h: "Speightful Moon", ml: "30/1", jp: 12, t: "Begley Greg", tp: 12, pa: "—", sp: "—", cl: "—" },
+      { n: 14, h: "Joy Of Life", ml: "6/1", jp: 14, t: "Mott William I.", tp: 16, pa: "88", sp: "74", cl: "112" },
+      { n: 15, h: "Palestra", ml: "8/1", jp: 14, t: "Beckman D. Whitworth", tp: 15, pa: "—", sp: "—", cl: "—" },
+      { n: 16, h: "Won'tcatchmecryan", ml: "15/1", jp: 16, t: "David Carlos A.", tp: 20, pa: "90", sp: "62", cl: "105" },
+    ] },
+  ],
+  sun: [
+    { r: 1, dist: "7f", surf: "dirt", name: "Starter Allowance, 3+", post: "1:00", wager: "", runners: [
+      { n: 1, h: "Lil Trick", ml: "", jp: 0, t: "Rey Hernandez", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Good Mojo", ml: "", jp: 0, t: "Norm W. Casse", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Just Asap", ml: "", jp: 0, t: "Steven M. Asmussen", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Captain Mercury", ml: "", jp: 0, t: "Rohan G. Crichton", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Il Cavallino", ml: "", jp: 0, t: "Aaron Shorter", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "Keep On Moving", ml: "", jp: 0, t: "Michael A. Tomlinson", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Capital Connection", ml: "", jp: 0, t: "Carlos Santamaria", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Trouble Ahead", ml: "", jp: 0, t: "Cameron Milligan", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 2, dist: "1 1/16m", surf: "dirt", name: "Maiden Claiming, 3+", post: "1:35", wager: "", runners: [
+      { n: 1, h: "Get Them Roses", ml: "", jp: 0, t: "William Walden", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Maximum Honor", ml: "", jp: 0, t: "Aaron Shorter", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Bedeviled", ml: "", jp: 0, t: "Steven M. Asmussen", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Private Show", ml: "", jp: 0, t: "Steven M. Asmussen", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Meanstepper", ml: "", jp: 0, t: "Ron Moquett", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "El Ramundo", ml: "", jp: 0, t: "Troy Newton", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Money Man", ml: "", jp: 0, t: "Destin G. Heath", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Maginnesontap", ml: "", jp: 0, t: "Brendan P. Walsh", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 3, dist: "6½f", surf: "dirt", name: "Claiming, 3+", post: "2:10", wager: "", runners: [
+      { n: 1, h: "Mom's Spaghetti", ml: "", jp: 0, t: "Anna Navarrete", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "State Conceal", ml: "", jp: 0, t: "Carlos Munoz", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Way Beyond", ml: "", jp: 0, t: "Steven M. Asmussen", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Join", ml: "", jp: 0, t: "Shelbi A. Kurtz", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Stone County", ml: "", jp: 0, t: "Armando Hernandez", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "City of Life", ml: "", jp: 0, t: "Troy S. Wismer", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Kokomo Joe", ml: "", jp: 0, t: "Matthew P. Sims", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Terrapin Station", ml: "", jp: 0, t: "Dale L. Romans", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 4, dist: "1 1/16m", surf: "dirt", name: "Maiden Special Weight, 2yo", post: "2:45", wager: "", runners: [
+      { n: 1, h: "Grantchester", ml: "", jp: 0, t: "Ian R. Wilkes", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Just a Holiday", ml: "", jp: 0, t: "Wesley A. Ward", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Hickory", ml: "", jp: 0, t: "Cherie DeVaux", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Damavand", ml: "", jp: 0, t: "Todd A. Pletcher", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Code of Arms", ml: "", jp: 0, t: "Steven M. Asmussen", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "Barrel Roll", ml: "", jp: 0, t: "Chad C. Brown", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Belzoni", ml: "", jp: 0, t: "William I. Mott", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Biathlon", ml: "", jp: 0, t: "Victoria H. Oliver", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 9, h: "Magical Mikel", ml: "", jp: 0, t: "Kenneth G. McPeek", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 10, h: "Stadion", ml: "", jp: 0, t: "Cameron Milligan", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 11, h: "Patriots Quest", ml: "", jp: 0, t: "Mark E. Casse", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 12, h: "Jokes Reserve", ml: "", jp: 0, t: "Caio Caramori", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 5, dist: "5½f", surf: "turf", name: "Allowance, 3+", post: "3:20", wager: "", runners: [
+      { n: 1, h: "Golden Ale", ml: "", jp: 0, t: "Frank Lucarelli", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Zambezi", ml: "", jp: 0, t: "Bobby C. Barnett", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Murdock", ml: "", jp: 0, t: "Larry Rivelli", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Mountain Bear (IRE)", ml: "", jp: 0, t: "J. Kent Sweezey", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Moon Sniper", ml: "", jp: 0, t: "Darrin Miller", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "Max Vegas", ml: "", jp: 0, t: "McLean Robertson", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Kalahari Dreams", ml: "", jp: 0, t: "Philip A. Bauer", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Storm Cloud Rising", ml: "", jp: 0, t: "Andres Cambray", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 9, h: "Ortley Avenue (IRE)", ml: "", jp: 0, t: "George Weaver", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 10, h: "Jet Sweep Joe", ml: "", jp: 0, t: "Paul McEntee", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 11, h: "Guy Smiley", ml: "", jp: 0, t: "Wesley A. Ward", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 12, h: "Twilight Delight", ml: "", jp: 0, t: "Daniel Leitch", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 6, dist: "7f", surf: "dirt", name: "Claiming, 3+", post: "3:57", wager: "", runners: [
+      { n: 1, h: "Executive Chef", ml: "", jp: 0, t: "Michael Puhich", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Billal", ml: "", jp: 0, t: "William I. Mott", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Timing Difference", ml: "", jp: 0, t: "Chris A. Hartman", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "High Ceiling", ml: "", jp: 0, t: "Joe Sharp", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Flying Liam", ml: "", jp: 0, t: "Nolan Ramsey", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "Tarantino", ml: "", jp: 0, t: "David Jacobson", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Barksdale", ml: "", jp: 0, t: "Robertino Diodoro", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Tom Cat Tuesday", ml: "", jp: 0, t: "Shelbi A. Kurtz", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 7, dist: "7f", surf: "dirt", name: "Allowance, 3+", post: "4:34", wager: "", runners: [
+      { n: 1, h: "Amor Patriae", ml: "", jp: 0, t: "James P. DiVito", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Bob's Carrot", ml: "", jp: 0, t: "Carlos Santamaria", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Ezum", ml: "", jp: 0, t: "Brad H. Cox", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Overtime Rules", ml: "", jp: 0, t: "Arnaud Delacour", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Pimlott", ml: "", jp: 0, t: "Brendan P. Walsh", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "Mount Vernon", ml: "", jp: 0, t: "Cherie DeVaux", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Lincoln's Law", ml: "", jp: 0, t: "Philip A. Bauer", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Embry Show", ml: "", jp: 0, t: "Bob Baffert", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 9, h: "Discotheque", ml: "", jp: 0, t: "J. Kent Sweezey", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 10, h: "Speedstorm", ml: "", jp: 0, t: "Ron Moquett", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 11, h: "Tre Italiani", ml: "", jp: 0, t: "Larry Rivelli", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 12, h: "Reclamation", ml: "", jp: 0, t: "Christopher Davis", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 8, dist: "5½f", surf: "turf", name: "Indian Summer (G3), 2yo", post: "", wager: "", runners: [
+      { n: 1, h: "Adonius (IRE)", ml: "", jp: 0, t: "Rebecca Menzies", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Fanshell Beach", ml: "", jp: 0, t: "Wesley A. Ward", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Cactus Closer", ml: "", jp: 0, t: "Dale L. Romans", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Crack On", ml: "", jp: 0, t: "Jimmy Corrigan", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Love a Warrior", ml: "", jp: 0, t: "Steven M. Asmussen", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "Ciarlatano", ml: "", jp: 0, t: "Brittany A. Vanden Berg", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Wood Island", ml: "", jp: 0, t: "George Weaver", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Ruiva", ml: "", jp: 0, t: "Wesley A. Ward", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 9, h: "Bee Crazy", ml: "", jp: 0, t: "Kelsey Danner", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 9, dist: "1 1/8m", surf: "dirt", name: "Juddmonte Spinster (G1), F&M 3+", post: "", wager: "", runners: [
+      { n: 1, h: "Regaled", ml: "", jp: 0, t: "D. Whitworth Beckman", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Counting Stars", ml: "", jp: 0, t: "Mark E. Casse", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Immersive", ml: "", jp: 0, t: "Brad H. Cox", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Fully Subscribed", ml: "", jp: 0, t: "Chad C. Brown", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Snowyte", ml: "", jp: 0, t: "Danny Gargan", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+    { r: 10, dist: "1 1/16m", surf: "turf", name: "Castle & Key Bourbon (G2), 2yo", post: "", wager: "", runners: [
+      { n: 1, h: "Trim Castle", ml: "", jp: 0, t: "John Ennis", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 2, h: "Agate", ml: "", jp: 0, t: "Kelsey Danner", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 3, h: "Bold Leadership", ml: "", jp: 0, t: "Todd A. Pletcher", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 4, h: "Heracles", ml: "", jp: 0, t: "Ronald B. Spatz", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 5, h: "Real Goodbar", ml: "", jp: 0, t: "Kenneth G. McPeek", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 6, h: "Popcorn", ml: "", jp: 0, t: "Jonathan Thomas", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 7, h: "Mad Mo", ml: "", jp: 0, t: "John Ennis", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 8, h: "Hemingway", ml: "", jp: 0, t: "Brad H. Cox", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 9, h: "Blaring Ambition", ml: "", jp: 0, t: "Michael J. Maker", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 10, h: "Let Em Know", ml: "", jp: 0, t: "D. Whitworth Beckman", tp: 0, pa: "", sp: "", cl: "" },
+      { n: 11, h: "Mid American", ml: "", jp: 0, t: "James P. DiVito", tp: 0, pa: "", sp: "", cl: "" },
+    ] },
+  ],
+};
 
-  { id: "light-won-up", name: "Light Won Up", trainer: "Doug O'Neill", tag: "avoid", surf: "turf", tier: 1,
-    last: "Sep 5 Kentucky Downs R10 · 6½f turf · 5th of 12, btn 1¼, 26.2-1",
-    note: "Reads like a gift — beaten a length and a quarter at 26-1, caught in tight between runners into deep stretch. But the chart also says BLED. That is medical, not a trip.",
-    day: "fri", race: "5", post: 10, ml: "9/2",
-    call: "He is in YOUR race (now 14 runners) and he is the 9/2 second choice. The program backs the money: top SPEED fig in the race (88) and tied-top CLASS (115). Everything says bet him except the word BLED. Do not back him. If he wins, he wins without you — that is a correct pass, not a bad beat. Note he is NOT the speed here: Office has a 108 pace fig from post 13." },
-
-  { id: "mad-house", name: "Mad House", trainer: "David VanWinkle", tag: "stakes", surf: "dirt", tier: 1,
-    last: "No start in my chart window — no footnote evidence either way.",
-    note: "",
-    day: "fri", race: "7", post: 1, ml: "10/1",
-    call: "REVISED Oct 2. Phoenix (G2), 6f dirt. I called him the structural play assuming an uncontested lead — wrong. Program pace figs: Viking 103, Jack's Promise 103, Mad House 102, Verifire 101. Contested speed, and on a sealed track contested speed cooks itself. Still live at 10/1 on a 95 speed fig, but as a horse, not a lock on the shape. Trainer 5% for the meet." },
-
-  { id: "nakatomi", name: "Nakatomi", trainer: "Wesley Ward", tag: "stakes", surf: "dirt", tier: 1,
-    last: "No start in my chart window.",
-    note: "",
-    day: "fri", race: "7", post: 10, ml: "7/2",
-    call: "REVISED Oct 2. Pass. His program pace fig is 93 — lowest of the live horses — so the Ward main-track number I leaned on describes a horse who closes, which is the wrong style for a sealed track. My two arguments were fighting each other. 7/2 from post 10 of 11 is not the price to find out." },
-
-  { id: "hymn", name: "Hymn", trainer: "Ron Moquett", tag: "stakes", surf: "dirt", tier: 1,
-    last: "No start in my chart window.",
-    note: "Best program figures in the Phoenix: SPEED 100 and CLASS 121, both tops in the race.",
-    day: "fri", race: "7", post: 8, ml: "4/1",
-    call: "Added Oct 2. I dismissed him as 'not in my charts' and never looked — that was lazy. On figures he is the best horse in the race and he is third choice. The strike against: Moquett is 0-for-13 on the Keeneland main track across the last two meets. Interesting on paper rather than the answer." },
-
-  { id: "no-nay-hudson", name: "No Nay Hudson (IRE)", trainer: "Wesley Ward", tag: "avoid", surf: "turf", tier: 1,
-    last: "No start in my chart window.",
-    note: "",
-    day: "sat", race: "6", post: 3, ml: "8/1",
-    call: "Woodford (G2), 5½f turf. Same trainer as Nakatomi, opposite side of the split: Ward is 2-for-32 on the Keeneland turf course. 8/1 is not enough to buy that." },
-
-  { id: "brilliant-berti", name: "Brilliant Berti", trainer: "Cherie DeVaux", tag: "watch", surf: "turf", tier: 2,
-    last: "Won at Kentucky Downs in my chart window — clean trip, no excuse needed.",
-    note: "",
-    day: "sat", race: "10", post: 2, ml: "6/1",
-    call: "Coolmore Turf Mile (G1), 1m turf, 9 runners. A G1 that will stay on the grass whatever the weather. 6/1 in a short field — fair, not generous." },
-
-  { id: "immersive", name: "Immersive", trainer: "Brad Cox", tag: "avoid", surf: "dirt", tier: 2,
-    last: "3rd of 4 in my chart window, beaten 8½.",
-    note: "Four-horse field, no trouble in the footnote, well beaten. That is a negative line, not a trip excuse.",
-    day: "sun", race: "9", post: 3, ml: "",
-    call: "Juddmonte Spinster (G1), 1 1/8m dirt — field of 5. No price, no pace scenario, and her last line is bad. Watch it, don't bet it." },
-
-  { id: "guy-smiley", name: "Guy Smiley", trainer: "Wesley Ward", tag: "watch", surf: "turf", tier: 2,
-    last: "Won at Kentucky Downs in my chart window.",
-    note: "",
-    day: "sun", race: "5", post: 11, ml: "",
-    call: "5½f turf allowance, 12 runners. He won for Ward at KD, but this is the Keeneland turf course where Ward is 2-for-32. Those two facts fight. Let the price decide — and only if the race stays on grass." },
-
-  { id: "fanshell-beach", name: "Fanshell Beach", trainer: "Wesley Ward", tag: "avoid", surf: "turf", tier: 3,
-    last: "No start in my chart window.",
-    note: "",
-    day: "sun", race: "8", post: 2, ml: "",
-    call: "Indian Summer (G3), 5½f turf, 9 runners. One of two Ward runners in here, on the surface where he is 2-for-32." },
-
-  { id: "ruiva", name: "Ruiva", trainer: "Wesley Ward", tag: "avoid", surf: "turf", tier: 3,
-    last: "No start in my chart window.",
-    note: "",
-    day: "sun", race: "8", post: 8, ml: "",
-    call: "Indian Summer (G3), 5½f turf. The second Ward runner. Two from one barn in a nine-horse turf sprint is a pace note, not a reason to back either of them." },
-
-  { id: "mid-american", name: "Mid American", trainer: "James DiVito", tag: "stakes", surf: "turf", tier: 1,
-    last: "Aug 29 Kentucky Downs R6 · 6½f turf · WON by 1¼, 5.35-1",
-    note: "Rated nicely off of the early pace then was well placed while saving ground to the turn, took command into the final furlong. A genuine stalker who saved ground — the style wants a route.",
-    day: "sun", race: "10", post: 11, ml: "",
-    call: "Castle & Key Bourbon (G2), 1 1/16m turf, 11 runners. The style is real; post 11 of 11 stretching out on a tight course is the problem. Needs to be past 8-1 to be worth the trouble." },
-
-  { id: "agate", name: "Agate", trainer: "Kelsey Danner", tag: "stakes", surf: "turf", tier: 1,
-    last: "Sep 9 Kentucky Downs R11 · 1m turf · 3rd of 12, btn 6¼, 5.58-1",
-    note: "Settled along the inside in the third flight at the back of the field and took a bad step nearing the five furlongs marker while being bumped. Bet, had an excuse, still ran third.",
-    day: "sun", race: "10", post: 2, ml: "",
-    call: "Bourbon (G2). Best of the three on merit: real trouble line at a real price, and post 2 is the opposite of Mid American's problem." },
-
-  { id: "trim-castle", name: "Trim Castle", trainer: "John Ennis", tag: "avoid", surf: "turf", tier: 2,
-    last: "Sep 9 Kentucky Downs R11 · 1m turf · 5th of 12, btn 11½, 40.19-1",
-    note: "Also 3rd of 9 at Kentucky Downs Aug 29 at 4.42-1. The route attempt was the 40-1 one and it was poor — the market knew going in.",
-    day: "sun", race: "10", post: 1, ml: "",
-    call: "Bourbon (G2), post 1. Two chart lines and the longer one is the bad one. No case here." },
-
-  { id: "real-goodbar", name: "Real Goodbar", trainer: "Kenneth McPeek", tag: "trouble", surf: "dirt", tier: 1,
-    last: "Sep 12 Churchill R10 · 1m dirt · 4th of 7, btn 4½, 6.69-1",
-    note: "Stalked three wide, bid between horses turning for home, vied while being floated to the five path entering the lane, yielded when in tight in upper stretch then got outkicked for show.",
-    day: "sun", race: "10", post: 5, ml: "",
-    call: "Bourbon (G2) — his only line in my data is on DIRT, bet to 6.69-1 with a trouble note. The one Bourbon runner with proven main-track form, so if this race comes off the turf he is live. Weaker than I first said though: McPeek is 9% on the Keeneland main track (5-for-55) and 20% on its turf. The horse's dirt form is real; the barn's local dirt record is not." },
-
-  // ---- Not entered Oct 2-4. Kentucky Downs trip-trouble shortlist, kept for
-  // the rest of the meet. These sit in the bottom group until one turns up
-  // in an entry list. ----
-  { id: "gran-oriente", name: "Gran Oriente (CHI)", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 1,
-    last: "Sep 7 Kentucky Downs R10 · G3 Mint Millions, 1m turf · 5th of 10, btn 2, 6.79-1",
-    note: "Vied for the lead between rivals to upper stretch, was crowded and in tight along the rail to the final sixteenth, then flattened out. In the fight and stopped — best line of the meet.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "movin-on-up", name: "Movin' On Up", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 1,
-    last: "Aug 29 Kentucky Downs R7 · G1 Ladies Turf Sprint, 6½f · 7th of 10, btn 6¾, 13.69-1",
-    note: "Bumped at the start, then steadied coming up the hill, then bumped again in the stretch. Three incidents in a Grade 1.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "glassing", name: "Glassing", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 1,
-    last: "Sep 6 Kentucky Downs R12 · 2yo f MSW, 6½f · 5th of 11, btn 5¼, 19.54-1",
-    note: "Off slow, raced in tight at the quarter marker, weaved through rivals, then crowded late. Three excuses in a juvenile maiden.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "phantom-fire", name: "Phantom Fire", trainer: "Ed Moger Jr.", tag: "trouble", surf: "turf", tier: 1,
-    last: "Aug 29 Kentucky Downs R5 · 2yo f allowance, 6½f · 8th of 10, btn 6½, 15.38-1",
-    note: "Stalked the pace boxed on the rail, went antsy on the turn, forcibly tipped out in the upper. Never got a clean run.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "out-on-bail", name: "Out On Bail", trainer: "Michael Maker", tag: "trouble", surf: "turf", tier: 2,
-    last: "Aug 30 Kentucky Downs R7 · 6½f turf · 6th of 11, btn 6½, 8.38-1",
-    note: "A bit in tight between the rail and a rival.", day: null, race: null, post: null, ml: "", call: "" },
-  { id: "athaliah", name: "Athaliah", trainer: "Riley Mott", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 5 Kentucky Downs R11 · alw opt clm, 7f turf · 5th of 10, btn 7¼, 8.28-1",
-    note: "Bumped and brushed at the break, then five to six wide off the bend. Mild improvement, needed more.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "vissino", name: "Vissino", trainer: "Mark Casse", tag: "trouble", surf: "turf", tier: 2,
-    last: "Aug 29 Kentucky Downs R6 · Listed juvenile sprint, 6½f · 9th of 11, btn 7¾, 8.59-1",
-    note: "Broke out, shuffled back, off slowly, steered widest. Improved into the lane but couldn't sustain it.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "bless-her", name: "Bless Her", trainer: "H. Graham Motion", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 9 Kentucky Downs R12 · 1 5/16m turf · 2nd of 9, btn 6¾, 10.42-1",
-    note: "Bumped with an outer rival and bobbled in tight early while prompting between horses, recovered to claim the place.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "madison-moon", name: "Madison Moon", trainer: "Joe Sharp", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 7 Kentucky Downs R2 · 2yo f MSW, 6½f · 10th of 12, btn 8, 15.22-1",
-    note: "Shut off soon after the start. Hard trouble, but she never got going afterwards.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "lucky-to-dance", name: "Lucky to Dance", trainer: "Darrin Miller", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 6 Kentucky Downs R7 · 6½f turf · 7th of 12, btn 4¼, 18.38-1",
-    note: "Reluctant loading, a step slow at the break, then boxed in passing the quarter pole.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "bandolim", name: "Bandolim", trainer: "Paulo Lobo", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 3 Kentucky Downs R2 · 1m turf · 4th of 10, btn 4, 6.29-1",
-    note: "Caught in tight nearing the top of the stretch.", day: null, race: null, post: null, ml: "", call: "" },
-  { id: "walley-world", name: "Walley World", trainer: "Saffie Joseph Jr.", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 7 Kentucky Downs R13 · 1m turf · 6th of 10, btn 8½, 6.88-1",
-    note: "Steadied after coming up on the heels of a weakening opponent past the quarter pole.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "silver-jewel", name: "Silver Jewel", trainer: "Pavel Matejka", tag: "trouble", surf: "turf", tier: 2,
-    last: "Aug 29 Kentucky Downs R8 · 2yo MSW, 1m turf · 7th of 12, btn 9¼, 11.28-1",
-    note: "Bumped at the start and off a bit slowly, then caught three to four wide throughout. Beaten far enough that the trip doesn't cover it.",
-    day: null, race: null, post: null, ml: "", call: "" },
-
-  // ---- Churchill Downs, Sep 10-27. Dirt-first, because Keeneland's fall
-  // meet is ~61% dirt and the list above is all turf. ----
-  { id: "stomp", name: "Stomp", trainer: "Ron Moquett", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 16 Churchill R8 · 7f dirt · 2nd of 7, btn 1 1/4, 16.28-1",
-    note: "Pinched at the start, lacked room early, chased the pacesetters, swept past.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "throttle", name: "Throttle", trainer: "Brad Cox", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 17 Churchill R6 · 1 1/16m dirt · 2nd of 10, btn 2, 6.04-1",
-    note: "Steadied at the 7/8 pole then chased the pace and battled into the stretch before being bumped. My parser mangled this footnote once; this is the corrected read.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "rocky-raccoon", name: "Rocky Raccoon", trainer: "Steven Asmussen", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 19 Churchill R11 · 7f dirt · 4th of 11, btn 2 1/2, 8.83-1",
-    note: "Squeezed back at the break, raced off the early going after the poor start, tipped out seven wide into the upper stretch, moved up but had no final winning bid in the drive.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "hey-dey", name: "Hey Dey", trainer: "Thomas Drury Jr.", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 17 Churchill R6 · 1 1/16m dirt · 3rd of 10, btn 3 1/2, 9.80-1",
-    note: "Broke inward then was shut off nearing the 7/8 pole before altering outward into the first turn then settled and rallied while six wide into the stretch.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "benedetta", name: "Benedetta", trainer: "Steven Asmussen", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 12 Churchill R6 · 6f dirt · 4th of 7, btn 4 1/4, 19.44-1",
-    note: "Was brushed and put in tight between horses at the start, raced off of the pace along the inside, pursued in the four path into the final furlong and moved up.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "diva-warrior", name: "Diva Warrior", trainer: "Brad Cox", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 20 Churchill R6 · 6½f dirt · 2nd of 8, btn 5 3/4, 14.86-1",
-    note: "Squeezed back at the break, trailed early after the poor start, swung wide into the lane and closed well in a belated rally racing from the far outside.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "saveurequity", name: "Saveurequity", trainer: "Randy Morse", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 10 Churchill R6 · 6f dirt · 4th of 10, btn 6 1/2, 16.99-1",
-    note: "Raced closed up early and chased the pace then angled four wide into the stretch but lugged in at the 1/8 pole then ran on late.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "flaming-verdict", name: "Flaming Verdict", trainer: "Michael Maker", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 27 Churchill R1 · 6f dirt · 2nd of 9, btn 6 3/4, 6.01-1",
-    note: "Broke slowly and brushed with an outer rival while steadying in tight quarters at the start, raced off of the pace early on, gained five wide and outside of rivals into the turn, bid to vie three across turning for home but proved no match for an inner counterpart in upper stretch then managed place.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "uncle-evco", name: "Uncle Evco", trainer: "Matt Shirer", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 12 Churchill R1 · 1 1/8m dirt · 5th of 8, btn 7, 13.55-1",
-    note: "Was subtly put in tight between horses soon after the start, laid off of the pace in the two path, shifted to the four path with five furlongs to go, chased in the five path then stayed on mildly to miss show.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "oro-estrella", name: "Oro Estrella", trainer: "W. Calhoun", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 18 Churchill R1 · 5½f dirt · 2nd of 12, btn 7 1/4, 9.07-1",
-    note: "Got squeezed back at the start and was allowed to settle early, tucking in into the turn then altered nine wide at the 3/16 pole to get clear and was full of run late.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "magic-woman", name: "Magic Woman", trainer: "Robert Medina", tag: "trouble", surf: "dirt", tier: 2,
-    last: "Sep 12 Churchill R2 · 6½f dirt · 3rd of 12, btn 7 1/2, 11.60-1",
-    note: "Laid off of the pace near the inside, altered course inwardly in midstretch and ran on to gain show.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  // --- Churchill turf, the three best lines only; the turf side is already
-  // well covered by Kentucky Downs above. ---
-  { id: "baltimore-heart", name: "Baltimore Heart", trainer: "Brian Williamson", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 18 Churchill R8 · 1 1/16m turf · 3rd of 10, btn 1 3/4, 5.36-1",
-    note: "Rated in the second flight early then steadied at the 7/8 pole and waited behind the pacesetters before making a rail bid at the top of the stretch and was gaining late.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "the-look", name: "The Look", trainer: "Brendan Walsh", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 19 Churchill R1 · 1 1/16m turf · 3rd of 8, btn 2, 8.33-1",
-    note: "Bit awkward, then squeezed at the break, raced near the back after the poor start racing in hand, advanced into the far turn, five wide into the upper stretch, shifted in and finished gamely to the wire.",
-    day: null, race: null, post: null, ml: "", call: "" },
-  { id: "mechaya", name: "Mechaya", trainer: "James DiVito", tag: "trouble", surf: "turf", tier: 2,
-    last: "Sep 27 Churchill R8 · 5½f turf · 3rd of 12, btn 2 1/2, 5.05-1",
-    note: "Raced along the inside early on, was steadied entering the turn, remained near the rail into the lane, rallied down the lane, split horses late and was gaining in the late stages.",
-    day: null, race: null, post: null, ml: "", call: "" },
-];
+// ---- My notes, attached to the runners they apply to. Everything else on
+// the card is the program's data, not my opinion. ----
+const NOTES = {
+  "lightwonup": { tag: "avoid", last: "Sep 5 Kentucky Downs R10 · 6½f turf · 5th of 12, btn 1¼, 26.2-1. Caught in tight between runners into deep stretch — and the chart says BLED.", call: "YOUR race. 9/2 second choice, top SPEED fig (88) and tied-top CLASS (115). Everything says bet him except the bleed. Do not back him; a pass here is correct, not a bad beat. He is also not the speed — Office has a 108 pace fig from post 13." },
+  "madhouse": { tag: "stakes", last: "No start in my chart window.", call: "REVISED Oct 2. I called him the structural speed play assuming an uncontested lead — wrong. Viking 103 and Jack's Promise 103 both out-pace him (102), Verifire 101. Contested speed cooks itself on a sealed track. Still live at 10/1 on a 95 speed fig, but as a horse, not a lock on the shape. Trainer 5%." },
+  "nakatomi": { tag: "avoid", last: "No start in my chart window.", call: "REVISED Oct 2 — pass. Pace fig 93, lowest of the live horses, so Ward's 45% main-track number describes a closer, which is the wrong style for a sealed track. My two arguments were fighting each other. Not at 7/2 from post 10 of 11." },
+  "hymn": { tag: "stakes", last: "Best figures in the race: SPEED 100, CLASS 121, both tops.", call: "Added Oct 2. I dismissed him as 'not in my charts' and never looked. On figures the best horse here, at third choice. Strike against: Moquett is 0-for-13 on the Keeneland main track across the last two meets." },
+  "nonayhudson": { tag: "avoid", last: "No start in my chart window.", call: "Ward on the GRASS, where he is 2-for-32 at Keeneland — the opposite side of the split from Nakatomi. 8/1 does not buy that." },
+  "brilliantberti": { tag: "watch", last: "Won at Kentucky Downs in my window, clean trip.", call: "A G1 that stays on grass whatever the weather. 6/1 in a nine-horse field is fair, not generous." },
+  "immersive": { tag: "avoid", last: "3rd of 4 in my window, beaten 8½, no trouble in the footnote.", call: "A bad line, not an excuse — in a five-horse field with no price. Watch it, don't bet it." },
+  "guysmiley": { tag: "watch", last: "Won for Ward at Kentucky Downs.", call: "Ward won with him on KD grass, but this is the Keeneland turf course (2-for-32). Those two facts fight. Let the price settle it, and only if the race stays on grass." },
+  "fanshellbeach": { tag: "avoid", last: "No start in my chart window.", call: "One of two Ward runners in here, on the surface where he is 2-for-32." },
+  "ruiva": { tag: "avoid", last: "No start in my chart window.", call: "The second Ward runner. Two from one barn in a nine-horse turf sprint is a pace note, not a reason to back either." },
+  "midamerican": { tag: "stakes", last: "Aug 29 Kentucky Downs R6 · 6½f turf · WON by 1¼ at 5.35-1. Rated off the pace, saved ground to the turn, took command in the final furlong.", call: "Genuine stalker and the style wants a route — but post 11 of 11 stretching out on a tight course is the bigger fact. Needs to be past 8-1." },
+  "agate": { tag: "stakes", last: "Sep 9 Kentucky Downs R11 · 1m turf · 3rd of 12, btn 6¼, 5.58-1. Took a bad step and was bumped nearing the five-furlong marker.", call: "Best of the Bourbon group on merit: real trouble at a real price, and post 2 is the opposite of Mid American's problem." },
+  "trimcastle": { tag: "avoid", last: "Sep 9 Kentucky Downs R11 · 1m turf · 5th of 12, btn 11½, 40.19-1. Also 3rd of 9 Aug 29 at 4.42-1.", call: "Two lines and the route one is the 40-1 flop. No case." },
+  "realgoodbar": { tag: "trouble", last: "Sep 12 Churchill R10 · 1m DIRT · 4th of 7, btn 4½, 6.69-1. Floated five wide, in tight in upper stretch.", call: "The one Bourbon runner with proven main-track form, so if this race comes off the turf he is live. Weaker than I first said: McPeek is 5-for-55 (9%) on Keeneland dirt, 20% on its turf. The horse's dirt form is real; the barn's local dirt record is not." },
+};
 
 const DAY_LABEL = { fri: "Friday · Oct 2", sat: "Saturday · Oct 3", sun: "Sunday · Oct 4" };
 const TAG_COLOR = { trouble: GREEN, avoid: LOSS, stakes: "#1F4E79", watch: "#6B6A5E", mine: "#8A6D1F" };
 const TAG_LABEL = { trouble: "Trip trouble", avoid: "Do not back", stakes: "Stakes", watch: "Watch", mine: "Yours" };
 
-function Horses({ horses, onStar, onAdd, onDrop }) {
+// Strip country suffix and punctuation so the program's spelling and mine
+// land on the same key.
+const nkey = (n) =>
+  String(n)
+    .replace(/\s*\((?:IRE|GB|FR|CHI|URU|JPN|ARG|BRZ)\)\s*$/i, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+function Horses({ day, horses, onStar, onAdd, onDrop }) {
   const [q, setQ] = useState("");
   const [only, setOnly] = useState("all");
+  const [open, setOpen] = useState({});
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ name: "", day: "", race: "", note: "" });
+  const [draft, setDraft] = useState({ name: "", race: "", note: "" });
 
-  const mine = (horses.mine || []).map((m) => ({ ...m, tag: "mine", tier: 2 }));
-  const all = [...HORSES, ...mine];
-
+  const races = CARD[day] || [];
   const needle = q.trim().toLowerCase();
-  let list = all.filter(
-    (h) =>
-      (!needle ||
-        h.name.toLowerCase().includes(needle) ||
-        (h.trainer || "").toLowerCase().includes(needle)) &&
-      (only === "all" || horses.starred[h.id])
-  );
+  const rid = (r, n) => day + "-" + r + "-" + n;
 
-  // Grouped by race day, because that's how the card gets worked. Anything
-  // without a race yet falls into the watch list at the bottom.
-  const order = ["fri", "sat", "sun", ""];
-  const groups = order
-    .map((d) => ({
-      key: d,
-      label: d ? DAY_LABEL[d] : "Not entered Oct 2–4 · rest of the meet",
-      rows: list
-        .filter((h) => (h.day || "") === d)
-        .sort(
-          (a, b) =>
-            (Number(a.race) || 99) - (Number(b.race) || 99) ||
-            (Number(a.post) || 99) - (Number(b.post) || 99) ||
-            (a.tier || 9) - (b.tier || 9)
-        ),
-    }))
-    .filter((g) => g.rows.length);
+  const hit = (x) =>
+    !needle ||
+    x.h.toLowerCase().includes(needle) ||
+    (x.t || "").toLowerCase().includes(needle);
+
+  const shown = (r) =>
+    r.runners.filter(
+      (x) => hit(x) && (only === "all" || horses.starred[rid(r.r, x.n)])
+    );
 
   const save = () => {
     if (!draft.name.trim()) return;
@@ -1360,13 +1541,17 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
       trainer: "",
       last: "",
       note: draft.note.trim(),
-      day: draft.day || null,
+      day: day,
       race: draft.race || null,
       call: "",
     });
-    setDraft({ name: "", day: "", race: "", note: "" });
+    setDraft({ name: "", race: "", note: "" });
     setAdding(false);
   };
+
+  const mine = (horses.mine || []).filter((m) => (m.day || day) === day);
+  const live = races.map((r) => ({ r, rows: shown(r) })).filter((g) => g.rows.length);
+  const filtering = needle || only === "star";
 
   return (
     <div className="px-4 py-3">
@@ -1374,22 +1559,23 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
         style={{ background: "#F6E9C8", border: `1px solid ${AMBER}`, color: INK }}
         className="rounded p-2 mb-3 text-xs leading-relaxed"
       >
-        <b>Check the board before you bet a turf race.</b> Rain is forecast
-        hardest Friday. Keeneland keeps the G1s on grass and moves the non-stakes
-        turf races first — Fri R5 and R10, Sat R3, Sun R5 are the exposed ones.
-        A race off the turf is a different race.
+        <b>Check the board before you bet a turf race.</b> Turf races are marked{" "}
+        <span style={{ color: GREEN }}>▲</span>. Keeneland keeps the G1s on grass
+        and moves the non-stakes turf races first. A race off the turf is a
+        different race.
         <div style={{ marginTop: 6 }}>
-          <b>Trainer win% is already in the price.</b> Cox is 25% and no secret:
-          34.5% dirt / 32.1% turf here, no split to exploit. The edges are the
-          splits one number hides — Ward 45% dirt vs 6% turf, Casse 4% dirt
-          (1-for-24) vs 22% turf, Asmussen 15% dirt vs 6% turf. See Trainers.
+          <b>Trainer win% is already in the price.</b> Cox is 34.5% dirt / 32.1%
+          turf here — no split to exploit. The edges are the splits one number
+          hides: Ward 45% dirt vs 6% turf, Casse 4% dirt (1-for-24) vs 22% turf,
+          Asmussen 15% vs 6%. See Trainers.
         </div>
       </div>
+
       <input
         id="horse-search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search horse or trainer"
+        placeholder="Search horse or trainer on this card"
         style={{ border: `1px solid ${RULE}`, background: "#fff" }}
         className="w-full px-3 py-2 rounded mb-3 text-base"
       />
@@ -1424,16 +1610,7 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
             style={{ border: `1px solid ${RULE}`, background: "#fff" }}
             className="w-full px-3 py-2 rounded mb-2 text-base"
           />
-          <Row label="Day">
-            {DAYS.map((d) => (
-              <Pill
-                key={d.id}
-                on={draft.day === d.id}
-                onClick={() => setDraft({ ...draft, day: draft.day === d.id ? "" : d.id })}
-              >
-                {d.label}
-              </Pill>
-            ))}
+          <Row label="Race">
             <input
               id="horse-race"
               value={draft.race}
@@ -1456,122 +1633,190 @@ function Horses({ horses, onStar, onAdd, onDrop }) {
             style={{ background: GREEN, color: PAPER_HI }}
             className="w-full py-3 rounded"
           >
-            Add horse
+            Add to {DAY_LABEL[day]}
           </button>
         </div>
       )}
 
-      {groups.length === 0 && (
+      {live.length === 0 && (
         <p style={{ color: "#7C7B70" }} className="text-sm py-6">
           {only === "star"
-            ? "Nothing starred yet. Tap the star on a horse to shortlist it."
-            : "No horse by that name on the list."}
+            ? "Nothing starred on this card yet. Tap a star to shortlist a runner."
+            : "No horse or trainer by that name on this card."}
         </p>
       )}
 
-      {groups.map((g) => (
-        <div key={g.key} className="mb-4">
+      {live.map(({ r, rows }) => {
+        const isOpen = filtering || open[r.r];
+        const flagged = r.runners.filter((x) => NOTES[nkey(x.h)]).length;
+        return (
+          <div key={r.r} className="mb-2">
+            <button
+              onClick={() => setOpen({ ...open, [r.r]: !open[r.r] })}
+              style={{ borderBottom: `1px solid ${RULE}` }}
+              className="w-full text-left pb-1 flex gap-2 items-baseline"
+            >
+              <span
+                style={{ fontFamily: "ui-monospace, monospace", color: GREEN }}
+                className="text-base"
+              >
+                R{r.r}
+              </span>
+              <span style={{ fontFamily: "Georgia, serif" }} className="text-base">
+                {r.dist} {r.surf === "turf" ? "turf ▲" : "dirt"}
+              </span>
+              <span style={{ color: "#7C7B70" }} className="text-xs truncate flex-1">
+                {r.name}
+              </span>
+              {flagged > 0 && (
+                <span style={{ color: AMBER }} className="text-xs">
+                  ●{flagged}
+                </span>
+              )}
+              <span style={{ color: "#7C7B70" }} className="text-xs">
+                {r.post && r.post + " · "}
+                {r.runners.length}
+              </span>
+              <span style={{ color: "#7C7B70" }} className="text-xs">
+                {isOpen ? "▾" : "▸"}
+              </span>
+            </button>
+
+            {r.wager && (
+              <div style={{ color: "#7C7B70" }} className="text-xs mt-1">
+                {r.wager}
+              </div>
+            )}
+
+            {isOpen &&
+              rows.map((x) => {
+                const note = NOTES[nkey(x.h)];
+                const id = rid(r.r, x.n);
+                return (
+                  <div
+                    key={x.n}
+                    style={{ borderBottom: `1px solid ${RULE}` }}
+                    className="py-2 flex gap-2 items-start"
+                  >
+                    <button
+                      onClick={() => onStar(id)}
+                      aria-label={horses.starred[id] ? "Unstar" : "Star"}
+                      style={{ color: horses.starred[id] ? AMBER : "#C3C2B6" }}
+                      className="text-lg leading-tight shrink-0"
+                    >
+                      ★
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-base">
+                        <span
+                          style={{ fontFamily: "ui-monospace, monospace", color: "#7C7B70" }}
+                        >
+                          {x.n}{" "}
+                        </span>
+                        {x.h}
+                        {x.ml && (
+                          <span
+                            style={{ fontFamily: "ui-monospace, monospace", color: INK }}
+                            className="text-xs"
+                          >
+                            {" "}
+                            {x.ml}
+                          </span>
+                        )}
+                        {x.p ? (
+                          <span style={{ color: AMBER }} className="text-xs">
+                            {" "}
+                            ★prog
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2 items-center mt-1 flex-wrap">
+                        {note && (
+                          <span
+                            style={{ color: TAG_COLOR[note.tag] || INK }}
+                            className="text-xs"
+                          >
+                            {TAG_LABEL[note.tag] || note.tag}
+                          </span>
+                        )}
+                        <span style={{ color: "#7C7B70" }} className="text-xs truncate">
+                          {x.t}
+                          {x.tp ? " " + x.tp + "%" : ""}
+                        </span>
+                        {x.pa && (
+                          <span
+                            style={{ fontFamily: "ui-monospace, monospace", color: "#7C7B70" }}
+                            className="text-xs"
+                          >
+                            P{x.pa} S{x.sp} C{x.cl}
+                          </span>
+                        )}
+                      </div>
+                      {note && (
+                        <div style={{ color: "#7C7B70" }} className="text-xs mt-1">
+                          {note.last}
+                        </div>
+                      )}
+                      {note && (
+                        <div style={{ color: GREEN }} className="text-xs mt-1">
+                          {note.call}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        );
+      })}
+
+      {mine.length > 0 && (
+        <div className="mb-4 mt-4">
           <div
             style={{
               fontFamily: "Georgia, serif",
               borderBottom: `1px solid ${RULE}`,
-              color: g.key ? INK : "#7C7B70",
+              color: "#8A6D1F",
             }}
             className="text-base pb-1 mb-1"
           >
-            {g.label}
+            Yours — {DAY_LABEL[day]}
           </div>
-          {g.rows.map((h) => (
+          {mine.map((m) => (
             <div
-              key={h.id}
+              key={m.id}
               style={{ borderBottom: `1px solid ${RULE}` }}
-              className="py-3 flex gap-2 items-start"
+              className="py-2"
             >
-              <button
-                onClick={() => onStar(h.id)}
-                aria-label={horses.starred[h.id] ? "Unstar" : "Star"}
-                style={{ color: horses.starred[h.id] ? AMBER : "#C3C2B6" }}
-                className="text-lg leading-tight shrink-0"
-              >
-                ★
-              </button>
-              <div className="min-w-0 flex-1">
-                <div className="text-base">
-                  {h.race ? (
-                    <span style={{ fontFamily: "ui-monospace, monospace", color: GREEN }}>
-                      R{h.race}{" "}
-                    </span>
-                  ) : null}
-                  {h.name}
-                  {h.post ? (
-                    <span
-                      style={{ fontFamily: "ui-monospace, monospace", color: "#7C7B70" }}
-                      className="text-xs"
-                    >
-                      {" "}
-                      ({h.post}){h.ml ? " " + h.ml : ""}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex gap-2 items-center mt-1">
-                  <span
-                    style={{ color: TAG_COLOR[h.tag] || INK }}
-                    className="text-xs"
-                  >
-                    {TAG_LABEL[h.tag] || h.tag}
+              <div className="text-base">
+                {m.race ? (
+                  <span style={{ fontFamily: "ui-monospace, monospace", color: GREEN }}>
+                    R{m.race}{" "}
                   </span>
-                  {h.surf && (
-                    <span
-                      style={{
-                        border: `1px solid ${RULE}`,
-                        color: h.surf === "dirt" ? "#8A6D1F" : GREEN,
-                      }}
-                      className="text-xs px-1 rounded"
-                    >
-                      {h.surf}
-                    </span>
-                  )}
-                  {h.trainer && (
-                    <span style={{ color: "#7C7B70" }} className="text-xs truncate">
-                      {h.trainer}
-                    </span>
-                  )}
-                </div>
-                {h.last && (
-                  <div style={{ color: "#7C7B70" }} className="text-xs mt-1">
-                    {h.last}
-                  </div>
-                )}
-                {h.note && <div className="text-xs mt-1 italic">{h.note}</div>}
-                {h.call && (
-                  <div style={{ color: GREEN }} className="text-xs mt-1">
-                    {h.call}
-                  </div>
-                )}
-                {h.tag === "mine" && (
-                  <button
-                    onClick={() => onDrop(h.id)}
-                    style={{ color: LOSS }}
-                    className="text-xs mt-1"
-                  >
-                    Remove
-                  </button>
-                )}
+                ) : null}
+                {m.name}
               </div>
+              {m.note && <div className="text-xs mt-1 italic">{m.note}</div>}
+              <button
+                onClick={() => onDrop(m.id)}
+                style={{ color: LOSS }}
+                className="text-xs mt-1"
+              >
+                Remove
+              </button>
             </div>
           ))}
         </div>
-      ))}
+      )}
 
-      <p style={{ color: "#7C7B70" }} className="text-xs mt-2 leading-relaxed">
-        {HORSES.length} horses off the Kentucky Downs and Churchill charts
-        (1,935 runners parsed, dirt and turf).{" "}
-        {HORSES.filter((h) => h.day).length} of them are entered Oct 2–4 and
-        carry a race, post and call — verified against the published entries on
-        Oct 1. The rest are kept for the back half of the meet. Posts and morning
-        lines move with scratches: the program at the gate wins any argument with
-        this screen. Anything you add is saved on this phone and rides along in
-        Copy log.
+      <p style={{ color: "#7C7B70" }} className="text-xs mt-3 leading-relaxed">
+        The full {DAY_LABEL[day]} card — {races.length} races,{" "}
+        {races.reduce((a, r) => a + r.runners.length, 0)} runners. Morning lines
+        and the P/S/C figures are the program's, not mine; Sunday has entries
+        only until that program lands. Amber ● counts my notes in a race. Posts,
+        prices and surfaces all move — the board at the gate wins any argument
+        with this screen. Stars and anything you add are saved on this phone and
+        ride along in Copy log.
       </p>
     </div>
   );
